@@ -7,6 +7,7 @@ import argparse
 import sys
 from pathlib import Path
 from video_processor_smart import SmartVideoProcessor
+from terminal_ui import VideoProcessorUI
 
 
 def main():
@@ -126,30 +127,17 @@ def main():
         print(f"错误: 缓冲时间不能为负数", file=sys.stderr)
         return 1
 
-    # 打印配置信息
-    print("=" * 60)
-    print("视频手机号脱敏工具（智能采样）")
-    print("=" * 60)
-    print(f"输入文件: {args.input}")
-    print(f"输出文件: {args.output}")
-    print(f"采样间隔: {args.sample_interval} 秒")
-    if args.buffer_time is None:
-        print(f"缓冲时间: 自动 ({args.sample_interval} 秒 = sample_interval)")
-    else:
-        print(f"缓冲时间: {args.buffer_time} 秒 (手动指定)")
-    print(f"打码方式: {args.blur_method}")
-    print(f"模糊强度: {args.blur_strength}")
-    print(f"使用GPU: {'是' if args.use_gpu else '否'}")
-    print("=" * 60)
-
-    # 性能预估
-    if args.sample_interval >= 1.0:
-        print(f"\n💡 性能预估: 约为逐帧处理的 {args.sample_interval * 30:.0f}x 速度")
-    else:
-        print(f"\n💡 性能预估: 约为逐帧处理的 {args.sample_interval * 30:.0f}x 速度")
-
-    if args.sample_interval > 2.0:
-        print("⚠️  警告: 采样间隔较大，可能漏检快速移动的手机号")
+    # 创建UI并设置配置信息
+    ui = VideoProcessorUI()
+    ui.set_config({
+        'input': args.input,
+        'output': args.output,
+        'blur_method': args.blur_method,
+        'blur_strength': args.blur_strength,
+        'use_gpu': args.use_gpu,
+        'sample_interval': args.sample_interval,
+        'buffer_time': args.buffer_time
+    })
 
     try:
         # 创建智能视频处理器
@@ -161,24 +149,12 @@ def main():
             buffer_time=args.buffer_time
         )
 
-        # 处理视频
-        stats = processor.process_video(
+        # 使用UI处理视频
+        stats = ui.process_smart_video_with_ui(
+            smart_processor=processor,
             input_path=str(input_path),
             output_path=str(output_path)
         )
-
-        print("\n" + "=" * 60)
-        print("处理统计:")
-        print(f"  总帧数: {stats['total_frames']}")
-        print(f"  OCR 调用次数: {stats['ocr_calls']}")
-        print(f"  节省 OCR 次数: {stats['total_frames'] - stats['ocr_calls']}")
-        print(f"  加速比: {stats['total_frames'] / stats['ocr_calls']:.1f}x")
-        print(f"  包含手机号的帧数: {stats['frames_with_phones']}")
-        print(f"  不重复手机号: {len(stats['unique_phones'])} 个")
-        if stats['unique_phones']:
-            print(f"  手机号列表: {', '.join(stats['unique_phones'])}")
-        print("=" * 60)
-        print(f"\n✓ 处理完成！输出文件: {args.output}")
 
         return 0
 

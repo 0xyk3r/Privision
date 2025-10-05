@@ -7,6 +7,7 @@ import argparse
 import sys
 from pathlib import Path
 from video_processor import VideoProcessor
+from terminal_ui import VideoProcessorUI
 
 
 def main():
@@ -86,16 +87,15 @@ def main():
             print("操作已取消")
             return 0
 
-    # 打印配置信息
-    print("=" * 60)
-    print("视频手机号脱敏工具")
-    print("=" * 60)
-    print(f"输入文件: {args.input}")
-    print(f"输出文件: {args.output}")
-    print(f"打码方式: {args.blur_method}")
-    print(f"模糊强度: {args.blur_strength}")
-    print(f"使用GPU: {'是' if args.use_gpu else '否'}")
-    print("=" * 60)
+    # 创建UI并设置配置信息
+    ui = VideoProcessorUI()
+    ui.set_config({
+        'input': args.input,
+        'output': args.output,
+        'blur_method': args.blur_method,
+        'blur_strength': args.blur_strength,
+        'use_gpu': args.use_gpu
+    })
 
     try:
         # 创建视频处理器
@@ -105,20 +105,12 @@ def main():
             blur_strength=args.blur_strength
         )
 
-        # 处理视频
-        stats = processor.process_video(
+        # 使用UI处理视频
+        stats = ui.process_video_with_ui(
+            video_processor=processor,
             input_path=str(input_path),
             output_path=str(output_path)
         )
-
-        print("\n" + "=" * 60)
-        print("处理统计:")
-        print(f"  总帧数: {stats['total_frames']}")
-        print(f"  处理帧数: {stats['processed_frames']}")
-        print(f"  包含手机号的帧数: {stats['frames_with_phones']}")
-        print(f"  检测到的手机号总数: {stats['total_phones_detected']}")
-        print("=" * 60)
-        print(f"\n✓ 处理完成！输出文件: {args.output}")
 
         return 0
 

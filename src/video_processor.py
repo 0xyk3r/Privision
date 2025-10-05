@@ -86,13 +86,19 @@ class VideoProcessor:
 
         return result
 
-    def process_frame(self, frame: np.ndarray, debug: bool = False) -> tuple[np.ndarray, int]:
+    def process_frame(
+        self,
+        frame: np.ndarray,
+        debug: bool = False,
+        detection_callback: Optional[Callable[[str, float], None]] = None
+    ) -> tuple[np.ndarray, int]:
         """
         处理单帧图像，检测并打码手机号
 
         Args:
             frame: 输入帧
             debug: 是否输出调试信息
+            detection_callback: 检测回调函数 callback(text, confidence)
 
         Returns:
             (处理后的帧, 检测到的手机号数量)
@@ -118,7 +124,15 @@ class VideoProcessor:
                 # 在手机号区域应用打码
                 processed_frame = self.apply_blur(processed_frame, bbox)
                 phone_count += 1
-                print(f"  ✓ 检测到手机号: {text} (置信度: {confidence:.2f})")
+
+                # 调用检测回调
+                if detection_callback:
+                    detection_callback(text, confidence)
+                elif not debug:  # 只有在没有回调且非debug模式时才打印
+                    print(f"  ✓ 检测到手机号: {text} (置信度: {confidence:.2f})")
+
+                if debug:
+                    print(f"  ✓ 检测到手机号: {text} (置信度: {confidence:.2f})")
             elif debug:
                 # 显示为什么不匹配
                 phones = self.phone_detector.find_phones(text)
