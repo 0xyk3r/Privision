@@ -1,0 +1,15 @@
+# PaddleOCR 3.x (2025年5月发布，与2.x不兼容)
+# 如果已安装2.x版本，请先卸载: pip uninstall paddleocr
+paddleocr>=3.0.0
+
+# PaddlePaddle 深度学习框架
+paddlepaddle>=3.0.0
+
+# OpenCV 视频处理
+opencv-python>=4.8.0
+
+# 数值计算
+numpy>=1.24.0
+
+# 图像处理
+Pillow>=10.0.0
