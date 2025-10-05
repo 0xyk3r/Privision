@@ -5,6 +5,7 @@
 import cv2
 import numpy as np
 import time
+import subprocess
 from typing import Optional, Callable
 from pathlib import Path
 from ocr_detector import OCRDetector
@@ -16,11 +17,11 @@ class VideoProcessor:
     """视频处理器 - 用于手机号脱敏"""
 
     def __init__(
-        self,
-        use_gpu: bool = False,
-        blur_method: str = 'gaussian',
-        blur_strength: int = 51,
-        visualize: bool = False
+            self,
+            use_gpu: bool = False,
+            blur_method: str = 'gaussian',
+            blur_strength: int = 51,
+            visualize: bool = False
     ):
         """
         初始化视频处理器
@@ -101,14 +102,62 @@ class VideoProcessor:
 
         return result
 
+    @staticmethod
+    def _has_ffmpeg() -> bool:
+        """检查系统是否安装了 FFmpeg"""
+        try:
+            subprocess.run(['ffmpeg', '-version'],
+                           capture_output=True, check=True)
+            return True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return False
+
+    def _reencode_with_ffmpeg(self, temp_path: str, output_path: str):
+        """
+        使用 FFmpeg 重新编码视频以获得更好的 H.264 压缩
+
+        Args:
+            temp_path: 临时视频文件路径
+            output_path: 最终输出路径
+        """
+        print(f"\n使用 FFmpeg 进行 H.264 编码...")
+
+        try:
+            result = subprocess.run(
+                [
+                    'ffmpeg',
+                    '-i', temp_path,  # 输入临时文件
+                    '-c:v', 'libx264',  # 使用 H.264 编码器
+                    '-preset', 'medium',  # 编码速度 (ultrafast, fast, medium, slow, veryslow)
+                    '-crf', '23',  # 质量控制 (18-28，数值越小质量越好)
+                    '-pix_fmt', 'yuv420p',  # 像素格式，确保兼容性
+                    '-movflags', '+faststart',  # 优化网络播放（元数据前置）
+                    '-y',  # 覆盖输出文件
+                    output_path
+                ],
+                check=True,
+                capture_output=True,
+                text=True
+            )
+
+            # 删除临时文件
+            Path(temp_path).unlink()
+            print(f"  ✓ H.264 编码完成")
+
+        except subprocess.CalledProcessError as e:
+            print(f"  ✗ FFmpeg 编码失败: {e.stderr}")
+            print(f"  保留临时文件作为输出")
+            # 如果 FFmpeg 失败，使用临时文件作为输出
+            Path(temp_path).rename(output_path)
+
     def process_frame(
-        self,
-        frame: np.ndarray,
-        debug: bool = False,
-        detection_callback: Optional[Callable[[str, float], None]] = None,
-        frame_idx: int = 0,
-        total_frames: int = 0,
-        current_fps: Optional[float] = None
+            self,
+            frame: np.ndarray,
+            debug: bool = False,
+            detection_callback: Optional[Callable[[str, float], None]] = None,
+            frame_idx: int = 0,
+            total_frames: int = 0,
+            current_fps: Optional[float] = None
     ) -> tuple[np.ndarray, int]:
         """
         处理单帧图像，检测并打码手机号
@@ -133,7 +182,7 @@ class VideoProcessor:
         if debug:
             print(f"\n[调试] OCR检测到 {len(detections)} 个文本区域")
             for i, (bbox, text, confidence) in enumerate(detections):
-                print(f"  [{i+1}] 文本: '{text}' (置信度: {confidence:.4f})")
+                print(f"  [{i + 1}] 文本: '{text}' (置信度: {confidence:.4f})")
 
         processed_frame = frame.copy()
         phone_count = 0
@@ -182,10 +231,10 @@ class VideoProcessor:
         return processed_frame, phone_count
 
     def process_video(
-        self,
-        input_path: str,
-        output_path: str,
-        progress_callback: Optional[Callable[[int, int], None]] = None
+            self,
+            input_path: str,
+            output_path: str,
+            progress_callback: Optional[Callable[[int, int], None]] = None
     ) -> dict:
         """
         处理视频文件，对所有手机号进行脱敏
@@ -214,16 +263,38 @@ class VideoProcessor:
         print(f"  帧率: {fps} FPS")
         print(f"  总帧数: {total_frames}")
 
+        # 检查 FFmpeg 可用性
+        has_ffmpeg = self._has_ffmpeg()
+        if has_ffmpeg:
+            print(f"\n编码配置:")
+            print(f"  ✓ 检测到 FFmpeg，将使用 H.264 高效编码")
+            print(f"  临时编码: MPEG-4")
+            print(f"  最终编码: H.264 (CRF 23, Preset Medium)")
+        else:
+            print(f"\n编码配置:")
+            print(f"  ✗ 未检测到 FFmpeg，使用 MPEG-4 编码")
+            print(f"  提示: 安装 FFmpeg 可获得更好的压缩率")
+
         # 创建输出目录
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
-        # 创建视频写入器
+        # 决定输出文件名
+        if has_ffmpeg:
+            # 使用临时文件，后续用 FFmpeg 重新编码
+            temp_output = str(Path(output_path).with_suffix('.temp.mp4'))
+            final_output = output_path
+        else:
+            # 直接输出到目标文件
+            temp_output = output_path
+            final_output = None
+
+        # 创建视频写入器 - 使用 MPEG-4 编解码器（兼容性最好）
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+        out = cv2.VideoWriter(temp_output, fourcc, fps, (width, height))
 
         if not out.isOpened():
             cap.release()
-            raise ValueError(f"无法创建输出视频文件: {output_path}")
+            raise ValueError(f"无法创建输出视频文件: {temp_output}")
 
         # 统计信息
         stats = {
@@ -241,56 +312,62 @@ class VideoProcessor:
         last_fps_update = start_time
         current_fps = 0.0
 
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
+        try:
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
 
-            frame_idx += 1
+                frame_idx += 1
 
-            # 计算当前处理速度（每秒更新一次）
-            current_time = time.time()
-            if current_time - last_fps_update >= 1.0:
-                elapsed = current_time - start_time
-                current_fps = frame_idx / elapsed if elapsed > 0 else 0
-                last_fps_update = current_time
+                # 计算当前处理速度（每秒更新一次）
+                current_time = time.time()
+                if current_time - last_fps_update >= 1.0:
+                    elapsed = current_time - start_time
+                    current_fps = frame_idx / elapsed if elapsed > 0 else 0
+                    last_fps_update = current_time
 
-            # 处理当前帧
-            try:
-                processed_frame, phone_count = self.process_frame(
-                    frame,
-                    debug=self.visualize,
-                    frame_idx=frame_idx,
-                    total_frames=total_frames,
-                    current_fps=current_fps
-                )
-            except KeyboardInterrupt:
-                print("\n[可视化] 用户从可视化窗口退出")
-                raise
+                # 处理当前帧
+                try:
+                    processed_frame, phone_count = self.process_frame(
+                        frame,
+                        debug=self.visualize,
+                        frame_idx=frame_idx,
+                        total_frames=total_frames,
+                        current_fps=current_fps
+                    )
+                except KeyboardInterrupt:
+                    print("\n[可视化] 用户从可视化窗口退出")
+                    raise
 
-            # 写入输出视频
-            out.write(processed_frame)
+                # 写入输出视频
+                out.write(processed_frame)
 
-            # 更新统计
-            stats['processed_frames'] += 1
-            if phone_count > 0:
-                stats['frames_with_phones'] += 1
-                stats['total_phones_detected'] += phone_count
+                # 更新统计
+                stats['processed_frames'] += 1
+                if phone_count > 0:
+                    stats['frames_with_phones'] += 1
+                    stats['total_phones_detected'] += phone_count
 
-            # 进度回调
-            if progress_callback:
-                progress_callback(frame_idx, total_frames)
-            elif frame_idx % 30 == 0:  # 每30帧打印一次进度
-                progress = (frame_idx / total_frames) * 100
-                print(f"  处理进度: {frame_idx}/{total_frames} ({progress:.1f}%)")
+                # 进度回调
+                if progress_callback:
+                    progress_callback(frame_idx, total_frames)
+                elif frame_idx % 30 == 0:  # 每30帧打印一次进度
+                    progress = (frame_idx / total_frames) * 100
+                    print(f"  处理进度: {frame_idx}/{total_frames} ({progress:.1f}%)")
 
-        # 释放资源
-        cap.release()
-        out.release()
+        finally:
+            # 释放资源
+            cap.release()
+            out.release()
 
-        # 关闭可视化窗口
-        if self.visualizer:
-            self.visualizer.close()
+            # 关闭可视化窗口
+            if self.visualizer:
+                self.visualizer.close()
+
+        # 使用 FFmpeg 重新编码（如果可用）
+        if has_ffmpeg and final_output:
+            self._reencode_with_ffmpeg(temp_output, final_output)
 
         print(f"\n处理完成！")
         print(f"  处理帧数: {stats['processed_frames']}")
