@@ -67,6 +67,12 @@ def main():
         help='使用GPU加速OCR识别（需要安装paddlepaddle-gpu）'
     )
 
+    parser.add_argument(
+        '--visualize',
+        action='store_true',
+        help='启用可视化窗口，实时显示检测结果'
+    )
+
     args = parser.parse_args()
 
     # 检查输入文件
@@ -87,30 +93,37 @@ def main():
             print("操作已取消")
             return 0
 
-    # 创建UI并设置配置信息
-    ui = VideoProcessorUI()
-    ui.set_config({
-        'input': args.input,
-        'output': args.output,
-        'blur_method': args.blur_method,
-        'blur_strength': args.blur_strength,
-        'use_gpu': args.use_gpu
-    })
-
     try:
         # 创建视频处理器
         processor = VideoProcessor(
             use_gpu=args.use_gpu,
             blur_method=args.blur_method,
-            blur_strength=args.blur_strength
+            blur_strength=args.blur_strength,
+            visualize=args.visualize
         )
 
-        # 使用UI处理视频
-        stats = ui.process_video_with_ui(
-            video_processor=processor,
-            input_path=str(input_path),
-            output_path=str(output_path)
-        )
+        # 在可视化模式下，直接调用处理器（不使用 terminal_ui）
+        if args.visualize:
+            stats = processor.process_video(
+                input_path=str(input_path),
+                output_path=str(output_path)
+            )
+        else:
+            # 正常模式使用 terminal_ui
+            ui = VideoProcessorUI()
+            ui.set_config({
+                'input': args.input,
+                'output': args.output,
+                'blur_method': args.blur_method,
+                'blur_strength': args.blur_strength,
+                'use_gpu': args.use_gpu
+            })
+
+            stats = ui.process_video_with_ui(
+                video_processor=processor,
+                input_path=str(input_path),
+                output_path=str(output_path)
+            )
 
         return 0
 

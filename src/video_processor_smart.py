@@ -4,10 +4,12 @@
 """
 import cv2
 import numpy as np
+import time
 from typing import Optional, List, Tuple, Dict
 from pathlib import Path
 from ocr_detector import OCRDetector
 from phone_detector import PhoneDetector
+from debug_visualizer import DebugVisualizer
 
 
 class PhoneRegion:
@@ -41,7 +43,8 @@ class SmartVideoProcessor:
         blur_method: str = 'gaussian',
         blur_strength: int = 51,
         sample_interval: float = 1.0,
-        buffer_time: float = None
+        buffer_time: float = None,
+        visualize: bool = False
     ):
         """
         初始化智能视频处理器
@@ -53,12 +56,24 @@ class SmartVideoProcessor:
             sample_interval: 采样间隔（秒），每隔多久识别一次
             buffer_time: 缓冲时间（秒），识别点前后各扩展的时间
                         如果为 None，自动设置为 sample_interval（确保覆盖采样间隙）
+            visualize: 是否启用可视化窗口
         """
         self.ocr_detector = OCRDetector(use_gpu=use_gpu)
         self.phone_detector = PhoneDetector()
         self.blur_method = blur_method
         self.blur_strength = blur_strength if blur_strength % 2 == 1 else blur_strength + 1
         self.sample_interval = sample_interval
+        self.visualize = visualize
+        self.visualizer = DebugVisualizer() if visualize else None
+
+        if visualize:
+            print("\n=== 可视化模式已启用 ===")
+            print("可视化窗口将在处理开始时打开")
+            print("快捷键:")
+            print("  Q/ESC - 退出")
+            print("  P     - 暂停/继续")
+            print("  T     - 切换标签显示 (仅手机号 -> 全部显示 -> 隐藏)")
+            print()
 
         # 如果没有指定 buffer_time，默认为 sample_interval
         # 这样可以确保完全覆盖采样间隙，不会有马赛克消失的情况
@@ -186,9 +201,15 @@ class SmartVideoProcessor:
             detections = self.ocr_detector.detect_text(frame)
             stats['ocr_calls'] += 1
 
+            # 创建手机号标记列表
+            phone_mask = []
+
             # 查找手机号
             for bbox, text, confidence in detections:
-                if self.phone_detector.contains_phone(text, strict=True):
+                is_phone = self.phone_detector.contains_phone(text, strict=True)
+                phone_mask.append(is_phone)
+
+                if is_phone:
                     # 计算该区域的有效帧范围（识别点前后各扩展 buffer_frames）
                     # 这样可以覆盖识别间隙中可能出现的手机号
                     start_frame = max(0, frame_idx - buffer_frames)
@@ -200,6 +221,27 @@ class SmartVideoProcessor:
                     stats['unique_phones'].add(text)
                     print(f"  [帧 {frame_idx}] 检测到手机号: {text} "
                           f"(置信度: {confidence:.2f}, 打码范围: {start_frame}-{end_frame})")
+
+            # 如果启用了调试可视化，显示检测结果
+            if self.visualizer:
+                try:
+                    should_continue = self.visualizer.show_frame(
+                        frame=frame,
+                        frame_idx=frame_idx,
+                        total_frames=total_frames,
+                        detections=detections,
+                        phone_mask=phone_mask,
+                        wait_key=1
+                    )
+                    if not should_continue:
+                        print("\n[可视化] 用户从可视化窗口退出")
+                        cap.release()
+                        out.release()
+                        if self.visualizer:
+                            self.visualizer.close()
+                        raise KeyboardInterrupt("用户请求退出")
+                except KeyboardInterrupt:
+                    raise
 
             # 跳到下一个采样点
             frame_idx += sample_frame_interval
@@ -218,20 +260,58 @@ class SmartVideoProcessor:
 
         cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # 重置到开头
         frame_idx = 0
+        start_time = time.time()
+        last_fps_update = start_time
+        current_fps = 0.0
 
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
 
+            # 计算当前处理速度（每秒更新一次）
+            current_time = time.time()
+            if current_time - last_fps_update >= 1.0:
+                elapsed = current_time - start_time
+                current_fps = frame_idx / elapsed if elapsed > 0 else 0
+                last_fps_update = current_time
+
             processed_frame = frame.copy()
             current_frame_phones = 0
 
-            # 查找当前帧需要打码的区域
+            # 收集当前帧需要打码的区域（用于可视化和打码）
+            current_regions = []
             for region in phone_regions:
                 if region.start_frame <= frame_idx <= region.end_frame:
+                    current_regions.append(region)
                     processed_frame = self.apply_blur(processed_frame, region.bbox)
                     current_frame_phones += 1
+
+            # 如果启用了调试可视化，显示当前帧的检测区域
+            if self.visualizer:
+                # 构建检测列表（用于可视化）
+                detections = [(r.bbox, r.text, r.confidence) for r in current_regions]
+                phone_mask = [True] * len(detections)  # 所有区域都是手机号
+
+                try:
+                    should_continue = self.visualizer.show_frame(
+                        frame=frame,  # 显示原始帧（未打码）
+                        frame_idx=frame_idx,
+                        total_frames=total_frames,
+                        detections=detections,
+                        phone_mask=phone_mask,
+                        fps=current_fps,
+                        wait_key=1
+                    )
+                    if not should_continue:
+                        print("\n[可视化] 用户从可视化窗口退出")
+                        cap.release()
+                        out.release()
+                        if self.visualizer:
+                            self.visualizer.close()
+                        raise KeyboardInterrupt("用户请求退出")
+                except KeyboardInterrupt:
+                    raise
 
             # 写入输出视频
             out.write(processed_frame)
@@ -251,6 +331,10 @@ class SmartVideoProcessor:
         # 释放资源
         cap.release()
         out.release()
+
+        # 关闭可视化窗口
+        if self.visualizer:
+            self.visualizer.close()
 
         print(f"\n处理完成！")
         print(f"  总帧数: {stats['total_frames']}")

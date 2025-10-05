@@ -98,6 +98,12 @@ def main():
         help='使用GPU加速OCR识别'
     )
 
+    parser.add_argument(
+        '--visualize',
+        action='store_true',
+        help='启用可视化窗口，实时显示检测结果'
+    )
+
     args = parser.parse_args()
 
     # 检查输入文件
@@ -127,18 +133,6 @@ def main():
         print(f"错误: 缓冲时间不能为负数", file=sys.stderr)
         return 1
 
-    # 创建UI并设置配置信息
-    ui = VideoProcessorUI()
-    ui.set_config({
-        'input': args.input,
-        'output': args.output,
-        'blur_method': args.blur_method,
-        'blur_strength': args.blur_strength,
-        'use_gpu': args.use_gpu,
-        'sample_interval': args.sample_interval,
-        'buffer_time': args.buffer_time
-    })
-
     try:
         # 创建智能视频处理器
         processor = SmartVideoProcessor(
@@ -146,15 +140,34 @@ def main():
             blur_method=args.blur_method,
             blur_strength=args.blur_strength,
             sample_interval=args.sample_interval,
-            buffer_time=args.buffer_time
+            buffer_time=args.buffer_time,
+            visualize=args.visualize
         )
 
-        # 使用UI处理视频
-        stats = ui.process_smart_video_with_ui(
-            smart_processor=processor,
-            input_path=str(input_path),
-            output_path=str(output_path)
-        )
+        # 在可视化模式下，直接调用处理器（不使用 terminal_ui）
+        if args.visualize:
+            stats = processor.process_video(
+                input_path=str(input_path),
+                output_path=str(output_path)
+            )
+        else:
+            # 正常模式使用 terminal_ui
+            ui = VideoProcessorUI()
+            ui.set_config({
+                'input': args.input,
+                'output': args.output,
+                'blur_method': args.blur_method,
+                'blur_strength': args.blur_strength,
+                'use_gpu': args.use_gpu,
+                'sample_interval': args.sample_interval,
+                'buffer_time': args.buffer_time
+            })
+
+            stats = ui.process_smart_video_with_ui(
+                smart_processor=processor,
+                input_path=str(input_path),
+                output_path=str(output_path)
+            )
 
         return 0
 

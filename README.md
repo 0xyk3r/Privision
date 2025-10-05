@@ -118,6 +118,9 @@ python main_smart.py input.mp4 output.mp4 --buffer-time 0.5
 
 # 配合 GPU 使用
 python main_smart.py input.mp4 output.mp4 --use-gpu
+
+# 可视化模式（处理过程中显示视频窗口）
+python main_smart.py input.mp4 output.mp4 --visualize
 ```
 
 #### 默认模式（逐帧处理，最准确）
@@ -154,6 +157,13 @@ python main.py input.mp4 output.mp4 --blur-strength 71
 ```bash
 # 需要安装 paddlepaddle-gpu
 python main.py input.mp4 output.mp4 --use-gpu
+```
+
+#### 4. 可视化模式
+
+```bash
+# 处理过程中显示视频窗口（调试用）
+python main.py input.mp4 output.mp4 --visualize
 ```
 
 ### 完整示例
