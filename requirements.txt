@@ -16,3 +16,9 @@ Pillow>=10.0.0
 
 # 终端美化和进度显示
 rich>=13.0.0
+
+# FastAPI Web框架和依赖（用于API服务）
+fastapi>=0.104.0
+uvicorn>=0.24.0
+python-multipart>=0.0.6
+pydantic>=2.0.0

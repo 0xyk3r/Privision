@@ -5,7 +5,7 @@
 import cv2
 import numpy as np
 import time
-from typing import Optional, List, Tuple, Dict
+from typing import Optional, Callable, List, Tuple, Dict
 from pathlib import Path
 from ocr_detector import OCRDetector
 from phone_detector import PhoneDetector
@@ -121,7 +121,8 @@ class SmartVideoProcessor:
     def process_video(
         self,
         input_path: str,
-        output_path: str
+        output_path: str,
+        progress_callback: Optional[Callable[[float, str], None]] = None
     ) -> dict:
         """
         智能处理视频文件
@@ -129,6 +130,7 @@ class SmartVideoProcessor:
         Args:
             input_path: 输入视频路径
             output_path: 输出视频路径
+            progress_callback: 进度回调函数 (progress: float, message: str)
 
         Returns:
             处理统计信息字典
@@ -188,9 +190,12 @@ class SmartVideoProcessor:
 
         # 阶段1: 识别阶段 - 记录所有需要打码的区域
         print("\n[阶段 1/2] 识别手机号区域...")
+        if progress_callback:
+            progress_callback(0, "[阶段 1/2] 开始识别手机号区域...")
         phone_regions: List[PhoneRegion] = []
 
         frame_idx = 0
+        last_progress_update = 0  # 上次更新进度的值
         while frame_idx < total_frames:
             cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
             ret, frame = cap.read()
@@ -246,23 +251,33 @@ class SmartVideoProcessor:
             # 跳到下一个采样点
             frame_idx += sample_frame_interval
 
-            # 显示进度
-            if stats['ocr_calls'] % 5 == 0:
-                progress = (frame_idx / total_frames) * 100
-                print(f"  识别进度: {frame_idx}/{total_frames} ({progress:.1f}%) - "
-                      f"已识别 {len(phone_regions)} 个区域")
+            # 实时计算并更新进度 - 识别阶段占总进度的80%
+            current_progress = (frame_idx / total_frames) * 80
+            # 每增加0.5%或到达最后才更新，避免过于频繁
+            if current_progress - last_progress_update >= 0.5 or frame_idx >= total_frames - sample_frame_interval:
+                message = f"[阶段 1/2] 识别进度: {frame_idx}/{total_frames} ({(frame_idx / total_frames) * 100:.1f}%) - 已识别 {len(phone_regions)} 个区域"
+                if stats['ocr_calls'] % 5 == 0 or frame_idx >= total_frames - sample_frame_interval:
+                    print(f"  {message}")
+                if progress_callback:
+                    progress_callback(current_progress, message)
+                last_progress_update = current_progress
 
         print(f"\n识别完成: 共 {stats['ocr_calls']} 次 OCR 调用, "
               f"发现 {len(phone_regions)} 个手机号区域")
+        if progress_callback:
+            progress_callback(80, f"[阶段 1/2] 识别完成，发现 {len(phone_regions)} 个手机号区域")
 
         # 阶段2: 打码阶段 - 逐帧处理并应用打码
         print("\n[阶段 2/2] 应用打码效果...")
+        if progress_callback:
+            progress_callback(80, "[阶段 2/2] 开始应用打码效果...")
 
         cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # 重置到开头
         frame_idx = 0
         start_time = time.time()
         last_fps_update = start_time
         current_fps = 0.0
+        last_progress_update = 80  # 从80%开始
 
         while True:
             ret, frame = cap.read()
@@ -321,12 +336,18 @@ class SmartVideoProcessor:
                 stats['frames_with_phones'] += 1
                 stats['total_phones_detected'] += current_frame_phones
 
-            # 显示进度
-            if frame_idx % (fps * 5) == 0:  # 每5秒显示一次
-                progress = (stats['processed_frames'] / total_frames) * 100
-                print(f"  打码进度: {stats['processed_frames']}/{total_frames} ({progress:.1f}%)")
-
             frame_idx += 1
+
+            # 实时计算并更新进度 - 打码阶段占总进度的20% (80%-100%)
+            current_progress = 80 + (stats['processed_frames'] / total_frames) * 20
+            # 每增加0.5%或到达最后才更新，避免过于频繁
+            if current_progress - last_progress_update >= 0.5 or frame_idx == total_frames:
+                message = f"[阶段 2/2] 打码进度: {stats['processed_frames']}/{total_frames} ({(stats['processed_frames'] / total_frames) * 100:.1f}%)"
+                if frame_idx % (fps * 5) == 0 or frame_idx == total_frames:  # 每5秒显示一次或最后一帧
+                    print(f"  {message}")
+                if progress_callback:
+                    progress_callback(current_progress, message)
+                last_progress_update = current_progress
 
         # 释放资源
         cap.release()
@@ -335,6 +356,10 @@ class SmartVideoProcessor:
         # 关闭可视化窗口
         if self.visualizer:
             self.visualizer.close()
+
+        # 最终进度设为100%
+        if progress_callback:
+            progress_callback(100, "处理完成")
 
         print(f"\n处理完成！")
         print(f"  总帧数: {stats['total_frames']}")
