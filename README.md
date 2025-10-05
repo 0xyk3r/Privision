@@ -17,7 +17,7 @@
 
 ### 核心技术栈
 
-- **PaddleOCR**: 文本检测和识别（支持返回精确坐标）
+- **PaddleOCR**: 文本检测和识别
 - **OpenCV**: 视频处理和打码效果实现
 - **FastAPI**: RESTful API 框架
 
