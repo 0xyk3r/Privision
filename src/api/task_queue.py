@@ -9,7 +9,7 @@ import time
 import json
 from pathlib import Path
 from datetime import datetime, timedelta
-from typing import Dict, Optional, Callable
+from typing import Dict, Optional
 from dataclasses import dataclass, asdict
 from enum import Enum
 
@@ -40,7 +40,7 @@ class Task:
     # 处理配置
     blur_method: str = 'gaussian'
     blur_strength: int = 51
-    use_gpu: bool = False
+    device: str = 'cpu'  # cpu, gpu:0, gpu:1, etc.
     sample_interval: float = 1.0
     buffer_time: Optional[float] = None
     precise_phone_location: bool = False
@@ -56,17 +56,21 @@ class Task:
 class TaskQueue:
     """任务队列管理器"""
 
-    def __init__(self, max_workers: int = 1, storage_dir: str = "./tasks", auto_delete_hours: int = 48):
+    def __init__(self, max_workers: int = 1, storage_dir: Optional[Path] = None, auto_delete_hours: int = 48):
         """
         初始化任务队列
 
         Args:
             max_workers: 最大并发处理任务数
-            storage_dir: 任务数据存储目录
+            storage_dir: 任务数据存储目录（如果为None，将在get_task_queue()中设置）
             auto_delete_hours: 自动删除完成任务的小时数（默认48小时）
         """
         self.max_workers = max_workers
-        self.storage_dir = Path(storage_dir)
+        if storage_dir is None:
+            # 默认使用当前目录下的tasks（向后兼容）
+            self.storage_dir = Path("./tasks")
+        else:
+            self.storage_dir = Path(storage_dir)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         self.auto_delete_hours = auto_delete_hours
 
@@ -223,34 +227,71 @@ class TaskQueue:
                 task.progress = 0
             self._save_tasks()
 
-            # 导入处理器
-            from video_processor_smart import SmartVideoProcessor
+            # 导入处理器和配置
+            from src.config.args import ProcessConfig
+            from src.core.video_processor import VideoProcessor
+            from src.ui.progress import ProgressCallback
 
-            # 创建进度回调
-            def progress_callback(progress: float, message: str):
-                with self.tasks_lock:
-                    task.progress = progress
-                    task.message = message
-                self._save_tasks()
+            # 创建进度回调类
+            class APIProgressCallback(ProgressCallback):
+                def __init__(self, task, tasks_lock, save_func):
+                    self.task = task
+                    self.tasks_lock = tasks_lock
+                    self.save_func = save_func
 
-            # 创建处理器
-            processor = SmartVideoProcessor(
-                use_gpu=task.use_gpu,
-                blur_method=task.blur_method,
-                blur_strength=task.blur_strength,
-                sample_interval=task.sample_interval,
-                buffer_time=task.buffer_time,
-                visualize=False,  # API模式不支持可视化
-                precise_phone_location=task.precise_phone_location,
-                precise_max_iterations=task.precise_max_iterations
-            )
+                def on_start(self, total_frames, fps, width, height):
+                    with self.tasks_lock:
+                        self.task.message = f"开始处理: {width}x{height}, {fps}FPS"
+                    self.save_func()
 
-            # 处理视频（使用进度回调）
-            stats = processor.process_video(
+                def on_progress(self, current_frame, total_frames, phase='processing'):
+                    progress = (current_frame / total_frames) * 100
+                    with self.tasks_lock:
+                        self.task.progress = progress
+                        self.task.message = f"{phase}: {current_frame}/{total_frames}"
+                    self.save_func()
+
+                def on_phone_detected(self, frame_idx, text, confidence):
+                    pass  # API模式不需要详细日志
+
+                def on_log(self, message, level='info'):
+                    pass  # API模式不需要详细日志
+
+                def on_phase_change(self, phase, phase_num, total_phases):
+                    with self.tasks_lock:
+                        self.task.message = f"阶段 {phase_num}/{total_phases}: {phase}"
+                    self.save_func()
+
+                def on_complete(self, stats):
+                    pass  # 完成状态在外部处理
+
+                def on_error(self, error):
+                    pass  # 错误在外部处理
+
+            # 创建配置对象
+            config = ProcessConfig(
                 input_path=task.input_path,
                 output_path=task.output_path,
-                progress_callback=progress_callback
+                mode='smart',  # API模式默认使用智能采样
+                blur_method=task.blur_method,
+                blur_strength=task.blur_strength,
+                device='gpu:0' if task.device.startswith('gpu') else 'cpu',
+                sample_interval=task.sample_interval,
+                buffer_time=task.buffer_time,
+                precise_phone_location=task.precise_phone_location,
+                precise_max_iterations=task.precise_max_iterations,
+                enable_rich=False,
+                enable_visualize=False
             )
+
+            # 创建进度回调
+            progress_callback = APIProgressCallback(task, self.tasks_lock, self._save_tasks)
+
+            # 创建处理器
+            processor = VideoProcessor(config, progress_callback=progress_callback)
+
+            # 处理视频
+            stats = processor.process_video(task.input_path, task.output_path)
 
             # 任务完成
             with self.tasks_lock:
@@ -277,7 +318,7 @@ class TaskQueue:
         output_path: str,
         blur_method: str = 'gaussian',
         blur_strength: int = 51,
-        use_gpu: bool = False,
+        device: str = 'cpu',
         sample_interval: float = 1.0,
         buffer_time: Optional[float] = None,
         precise_phone_location: bool = False,
@@ -291,7 +332,7 @@ class TaskQueue:
             output_path: 输出视频路径
             blur_method: 打码方式
             blur_strength: 模糊强度
-            use_gpu: 是否使用GPU
+            device: 设备类型（cpu, gpu:0, gpu:1, etc.）
             sample_interval: 采样间隔
             buffer_time: 缓冲时间
             precise_phone_location: 是否启用精确定位
@@ -312,7 +353,7 @@ class TaskQueue:
             created_at=datetime.now().isoformat(),
             blur_method=blur_method,
             blur_strength=blur_strength,
-            use_gpu=use_gpu,
+            device=device,
             sample_interval=sample_interval,
             buffer_time=buffer_time,
             precise_phone_location=precise_phone_location,
@@ -359,34 +400,42 @@ class TaskQueue:
         Returns:
             是否成功删除
         """
+        # 先在锁外获取任务信息和验证状态
         with self.tasks_lock:
-            if task_id in self.tasks:
-                task = self.tasks[task_id]
+            if task_id not in self.tasks:
+                return False
 
-                # 只能删除已完成或失败的任务
-                if task.status in [TaskStatus.COMPLETED, TaskStatus.FAILED]:
-                    # 删除输入文件
-                    if task.input_path and Path(task.input_path).exists():
-                        try:
-                            Path(task.input_path).unlink()
-                            print(f"已删除输入文件: {task.input_path}")
-                        except Exception as e:
-                            print(f"删除输入文件失败: {e}")
+            task = self.tasks[task_id]
 
-                    # 删除输出文件
-                    if task.output_path and Path(task.output_path).exists():
-                        try:
-                            Path(task.output_path).unlink()
-                            print(f"已删除输出文件: {task.output_path}")
-                        except Exception as e:
-                            print(f"删除输出文件失败: {e}")
+            # 只能删除已完成或失败的任务
+            if task.status not in [TaskStatus.COMPLETED, TaskStatus.FAILED]:
+                return False
 
-                    # 删除任务记录
-                    del self.tasks[task_id]
-                    self._save_tasks()
-                    return True
+            # 在锁内复制文件路径，然后立即删除任务记录
+            input_path = task.input_path
+            output_path = task.output_path
+            del self.tasks[task_id]
 
-        return False
+        # 在锁外执行文件删除（I/O 操作）
+        # 删除输入文件
+        if input_path and Path(input_path).exists():
+            try:
+                Path(input_path).unlink()
+                print(f"已删除输入文件: {input_path}")
+            except Exception as e:
+                print(f"删除输入文件失败: {e}")
+
+        # 删除输出文件
+        if output_path and Path(output_path).exists():
+            try:
+                Path(output_path).unlink()
+                print(f"已删除输出文件: {output_path}")
+            except Exception as e:
+                print(f"删除输出文件失败: {e}")
+
+        # 保存任务状态（这个方法内部会获取锁）
+        self._save_tasks()
+        return True
 
     def shutdown(self):
         """关闭任务队列"""
@@ -406,9 +455,14 @@ class TaskQueue:
 _task_queue: Optional[TaskQueue] = None
 
 
-def get_task_queue() -> TaskQueue:
-    """获取全局任务队列实例"""
+def get_task_queue(storage_dir: Optional[Path] = None) -> TaskQueue:
+    """
+    获取全局任务队列实例
+
+    Args:
+        storage_dir: 任务存储目录（仅首次调用时有效）
+    """
     global _task_queue
     if _task_queue is None:
-        _task_queue = TaskQueue(max_workers=5)
+        _task_queue = TaskQueue(max_workers=5, storage_dir=storage_dir)
     return _task_queue

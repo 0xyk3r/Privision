@@ -3,10 +3,11 @@
 通过迭代验证OCR结果，精确定位手机号在图像中的位置
 """
 import numpy as np
-from typing import List, Tuple, Optional, Union
-from bbox_calculator import BboxCalculator
-from phone_detector import PhoneDetector
-
+from typing import Tuple, Optional
+import sys
+from pathlib import Path
+from src.core.bbox_calculator import BboxCalculator
+from src.core.phone_detector import PhoneDetector
 
 class PreciseLocator:
     """精确定位器 - 通过迭代验证精确定位手机号"""

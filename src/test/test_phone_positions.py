@@ -2,7 +2,7 @@
 """
 测试 phone_detector.find_phone_positions 的位置映射
 """
-from phone_detector import PhoneDetector
+from src.core.phone_detector import PhoneDetector
 
 def test_phone_positions():
     """测试手机号位置查找"""

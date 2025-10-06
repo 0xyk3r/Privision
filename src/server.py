@@ -2,18 +2,59 @@
 FastAPI 服务器 - 视频手机号脱敏 API
 提供上传视频、查询进度、下载结果的REST API接口
 """
-import os
 import shutil
+import argparse
 from pathlib import Path
 from typing import Optional
 from datetime import datetime
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Query
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from task_queue import get_task_queue, TaskStatus
+from src.api.task_queue import get_task_queue, TaskStatus
+
+
+# ====== 全局配置 ======
+# 数据目录配置（将在启动时初始化）
+DATA_DIR: Optional[Path] = None
+UPLOAD_DIR: Optional[Path] = None
+OUTPUT_DIR: Optional[Path] = None
+TASKS_DIR: Optional[Path] = None
+
+
+def init_directories(data_dir: str = None):
+    """
+    初始化数据目录
+
+    Args:
+        data_dir: 数据根目录路径，默认为项目根目录
+    """
+    global DATA_DIR, UPLOAD_DIR, OUTPUT_DIR, TASKS_DIR
+
+    if data_dir is None:
+        # 默认使用项目根目录（src的父目录）
+        project_root = Path(__file__).parent.parent.resolve()
+        DATA_DIR = project_root / "api-data"
+    else:
+        DATA_DIR = Path(data_dir).resolve()
+
+    # 创建子目录
+    UPLOAD_DIR = DATA_DIR / "uploads"
+    OUTPUT_DIR = DATA_DIR / "outputs"
+    TASKS_DIR = DATA_DIR / "tasks"
+
+    # 创建所有必要的目录
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    TASKS_DIR.mkdir(parents=True, exist_ok=True)
+
+    print(f"数据目录: {DATA_DIR}")
+    print(f"  - 上传目录: {UPLOAD_DIR}")
+    print(f"  - 输出目录: {OUTPUT_DIR}")
+    print(f"  - 任务目录: {TASKS_DIR}")
 
 
 # 创建 FastAPI 应用
@@ -33,10 +74,7 @@ app.add_middleware(
 )
 
 # 文件存储配置
-UPLOAD_DIR = Path("./uploads")
-OUTPUT_DIR = Path("./outputs")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+init_directories()  # 初始化目录结构
 
 
 # ====== 数据模型 ======
@@ -93,7 +131,7 @@ async def create_task(
     file: UploadFile = File(..., description="要处理的视频文件"),
     blur_method: str = Form("gaussian", description="打码方式: gaussian/pixelate/black"),
     blur_strength: int = Form(51, description="模糊强度（仅高斯模糊）"),
-    use_gpu: bool = Form(False, description="是否使用GPU加速"),
+    device: str = Form("cpu", description="计算设备: cpu, gpu:0, gpu:1, etc."),
     sample_interval: float = Form(1.0, description="采样间隔（秒）"),
     buffer_time: Optional[float] = Form(None, description="缓冲时间（秒）"),
     precise_phone_location: bool = Form(False, description="是否启用精确定位（避免打码其他文字）"),
@@ -105,7 +143,7 @@ async def create_task(
     - **file**: 视频文件（支持mp4等格式）
     - **blur_method**: 打码方式，可选 gaussian（高斯模糊）、pixelate（像素化）、black（黑色遮挡）
     - **blur_strength**: 模糊强度，仅对高斯模糊有效，必须为奇数
-    - **use_gpu**: 是否使用GPU加速OCR识别
+    - **device**: 计算设备，格式为 'cpu' 或 'gpu:0', 'gpu:1' 等
     - **sample_interval**: 采样间隔（秒），建议0.5-2.0
     - **buffer_time**: 缓冲时间（秒），默认等于sample_interval
     - **precise_phone_location**: 是否启用精确定位（通过迭代验证精确定位手机号，避免打码其他文字，会增加处理时间）
@@ -129,7 +167,11 @@ async def create_task(
 
         # 验证参数
         if blur_method not in ['gaussian', 'pixelate', 'black']:
-            raise HTTPException(status_code=400, detail="blur_method 必须是 gaussian/pixelate/black")
+            raise HTTPException(status_code=400, detail=f"不支持的打码方式: {blur_method}")
+
+        # 验证device格式
+        if not (device == 'cpu' or device.startswith('gpu:')):
+            raise HTTPException(status_code=400, detail=f"无效的设备格式: {device}，请使用 'cpu' 或 'gpu:0', 'gpu:1' 等")
 
         if blur_strength < 1 or blur_strength % 2 == 0:
             raise HTTPException(status_code=400, detail="blur_strength 必须是大于0的奇数")
@@ -159,7 +201,7 @@ async def create_task(
             output_path=str(output_path),
             blur_method=blur_method,
             blur_strength=blur_strength,
-            use_gpu=use_gpu,
+            device=device,
             sample_interval=sample_interval,
             buffer_time=buffer_time,
             precise_phone_location=precise_phone_location,
@@ -320,7 +362,7 @@ async def delete_task(task_id: str):
 async def startup_event():
     """应用启动时初始化任务队列"""
     print("正在启动 API 服务器...")
-    get_task_queue()  # 初始化任务队列
+    get_task_queue(storage_dir=TASKS_DIR)  # 初始化任务队列，使用配置的TASKS_DIR
     print("API 服务器启动完成")
 
 
@@ -335,32 +377,61 @@ async def shutdown_event():
 
 # ====== 主程序入口 ======
 
-if __name__ == "__main__":
+def start_server():
+    """启动服务器的入口函数"""
     import uvicorn
 
-    print("""
+    # 解析命令行参数
+    parser = argparse.ArgumentParser(description="视频手机号脱敏 API 服务器")
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        help="数据根目录路径，默认为项目根目录"
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="0.0.0.0",
+        help="服务器监听地址，默认为 0.0.0.0"
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="服务器监听端口，默认为 8000"
+    )
+    args = parser.parse_args()
+
+    # 初始化数据目录
+    init_directories(args.data_dir)
+
+    print(f"""
 ╔══════════════════════════════════════════════════════════════╗
 ║          视频手机号脱敏 API 服务器                              ║
 ╚══════════════════════════════════════════════════════════════╝
 
-服务地址: http://localhost:8000
-API 文档: http://localhost:8000/docs
-交互式文档: http://localhost:8000/redoc
+服务地址: http://{args.host}:{args.port}
+API 文档: http://localhost:{args.port}/docs
+交互式文档: http://localhost:{args.port}/redoc
 
 主要接口:
   POST   /api/tasks              - 上传视频并创建任务
-  GET    /api/tasks/{task_id}   - 查询任务进度
-  GET    /api/tasks/{task_id}/download - 下载处理后的视频
+  GET    /api/tasks/{{task_id}}   - 查询任务进度
+  GET    /api/tasks/{{task_id}}/download - 下载处理后的视频
   GET    /api/tasks              - 获取所有任务列表
-  DELETE /api/tasks/{task_id}   - 删除任务
+  DELETE /api/tasks/{{task_id}}   - 删除任务
 
 按 Ctrl+C 停止服务器
 """)
 
     uvicorn.run(
-        "api_server:app",
-        host="0.0.0.0",
-        port=8000,
+        "src.server:app",
+        host=args.host,
+        port=args.port,
         reload=False,
         log_level="info"
     )
+
+
+if __name__ == "__main__":
+    start_server()

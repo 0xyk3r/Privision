@@ -4,8 +4,8 @@
 """
 import cv2
 import numpy as np
-from ocr_detector import OCRDetector
-from phone_detector import PhoneDetector
+from src.core.ocr_detector import OCRDetector
+from src.core.phone_detector import PhoneDetector
 
 print("=" * 80)
 print("快速测试 - OCR 和手机号检测")
@@ -20,7 +20,7 @@ print("\n✓ 创建测试图像（包含两个手机号）")
 
 # 测试 OCR
 print("\n测试 OCR 检测器...")
-ocr = OCRDetector(use_gpu=False)
+ocr = OCRDetector(device='cpu')
 detections = ocr.detect_text(img)
 
 print(f"\n✓ OCR 检测到 {len(detections)} 个文本区域:")

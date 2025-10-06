@@ -1,146 +1,49 @@
 #!/usr/bin/env python3
 """
-视频手机号脱敏工具 - 主程序
+视频手机号脱敏工具 - 统一CLI入口
 使用PaddleOCR识别视频中的手机号并进行打码处理
 """
-import argparse
 import sys
-from pathlib import Path
-from video_processor import VideoProcessor
-from terminal_ui import VideoProcessorUI
+
+from src.config import parse_args
+from src.core import VideoProcessor
+from src.ui import RichUI, ConsoleProgress, Visualizer
 
 
 def main():
     """主程序入口"""
-    parser = argparse.ArgumentParser(
-        description='视频手机号脱敏工具 - 自动识别并打码视频中的中国大陆手机号',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-示例:
-  # 基本使用（默认高斯模糊）
-  python main.py input.mp4 output.mp4
-
-  # 使用像素化打码
-  python main.py input.mp4 output.mp4 --blur-method pixelate
-
-  # 使用黑色遮挡
-  python main.py input.mp4 output.mp4 --blur-method black
-
-  # 使用GPU加速
-  python main.py input.mp4 output.mp4 --use-gpu
-
-  # 调整模糊强度（仅对高斯模糊有效）
-  python main.py input.mp4 output.mp4 --blur-strength 71
-        """
-    )
-
-    parser.add_argument(
-        'input',
-        type=str,
-        help='输入视频文件路径'
-    )
-
-    parser.add_argument(
-        'output',
-        type=str,
-        help='输出视频文件路径'
-    )
-
-    parser.add_argument(
-        '--blur-method',
-        type=str,
-        choices=['gaussian', 'pixelate', 'black'],
-        default='gaussian',
-        help='打码方式: gaussian(高斯模糊), pixelate(像素化), black(黑色遮挡) [默认: gaussian]'
-    )
-
-    parser.add_argument(
-        '--blur-strength',
-        type=int,
-        default=51,
-        help='模糊强度（高斯模糊的核大小，必须为奇数，越大越模糊）[默认: 51]'
-    )
-
-    parser.add_argument(
-        '--use-gpu',
-        action='store_true',
-        help='使用GPU加速OCR识别（需要安装paddlepaddle-gpu）'
-    )
-
-    parser.add_argument(
-        '--visualize',
-        action='store_true',
-        help='启用可视化窗口，实时显示检测结果'
-    )
-
-    parser.add_argument(
-        '--precise-phone-location',
-        action='store_true',
-        help='启用精确定位（通过迭代验证精确定位手机号，避免打码其他文字，会增加处理时间）'
-    )
-
-    parser.add_argument(
-        '--precise-max-iterations',
-        type=int,
-        default=3,
-        help='精确定位的最大迭代次数 [默认: 3]'
-    )
-
-    args = parser.parse_args()
-
-    # 检查输入文件
-    input_path = Path(args.input)
-    if not input_path.exists():
-        print(f"错误: 输入文件不存在: {args.input}", file=sys.stderr)
-        return 1
-
-    if not input_path.is_file():
-        print(f"错误: 输入路径不是文件: {args.input}", file=sys.stderr)
-        return 1
-
-    # 检查输出路径
-    output_path = Path(args.output)
-    if output_path.exists():
-        response = input(f"警告: 输出文件已存在: {args.output}\n是否覆盖? (y/n): ")
-        if response.lower() not in ['y', 'yes']:
-            print("操作已取消")
-            return 0
-
     try:
-        # 创建视频处理器
-        processor = VideoProcessor(
-            use_gpu=args.use_gpu,
-            blur_method=args.blur_method,
-            blur_strength=args.blur_strength,
-            visualize=args.visualize,
-            precise_phone_location=args.precise_phone_location,
-            precise_max_iterations=args.precise_max_iterations
-        )
+        # 解析参数
+        config = parse_args()
 
-        # 在可视化模式下，直接调用处理器（不使用 terminal_ui）
-        if args.visualize:
-            stats = processor.process_video(
-                input_path=str(input_path),
-                output_path=str(output_path)
-            )
+        # 创建进度回调
+        if config.enable_visualize:
+            # 可视化模式：不使用Rich UI
+            progress_callback = None
+            print("\n=== 可视化模式已启用 ===")
+            print("可视化窗口将在处理开始时打开")
+            print("快捷键:")
+            print("  Q/ESC - 退出")
+            print("  P     - 暂停/继续")
+            print("  T     - 切换标签显示 (仅手机号 -> 全部显示 -> 隐藏)")
+            print()
+        elif config.enable_rich:
+            # Rich UI模式
+            progress_callback = RichUI(config.__dict__)
+            progress_callback.start_ui()
         else:
-            # 正常模式使用 terminal_ui
-            ui = VideoProcessorUI()
-            ui.set_config({
-                'input': args.input,
-                'output': args.output,
-                'blur_method': args.blur_method,
-                'blur_strength': args.blur_strength,
-                'use_gpu': args.use_gpu,
-                'precise_phone_location': args.precise_phone_location,
-                'precise_max_iterations': args.precise_max_iterations
-            })
+            # 简单控制台模式
+            progress_callback = ConsoleProgress()
 
-            stats = ui.process_video_with_ui(
-                video_processor=processor,
-                input_path=str(input_path),
-                output_path=str(output_path)
-            )
+        # 创建视频处理器
+        processor = VideoProcessor(config, progress_callback=progress_callback)
+
+        # 处理视频
+        stats = processor.process_video(config.input_path, config.output_path)
+
+        # 确保UI停止
+        if isinstance(progress_callback, RichUI):
+            progress_callback.stop_ui()
 
         return 0
 

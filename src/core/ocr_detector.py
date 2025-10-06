@@ -11,17 +11,18 @@ import cv2
 class OCRDetector:
     """基于PaddleOCR 3.x的文本检测器"""
 
-    def __init__(self, use_gpu: bool = False, lang: str = 'ch'):
+    def __init__(self, device: str = 'cpu', lang: str = 'ch'):
         """
         初始化OCR检测器
 
         Args:
-            use_gpu: 是否使用GPU加速
+            device: 计算设备，格式为 'cpu' 或 'gpu:0', 'gpu:1' 等
             lang: 语言，默认'ch'表示中英文
         """
         # 初始化PaddleOCR 3.x
-        # device="cpu" 使用CPU，device="gpu:0" 使用GPU
-        device = "gpu:0" if use_gpu else "cpu"
+        # PaddleOCR接受的device格式: "cpu" 或 "gpu:0"
+        print(f"初始化PaddleOCR (3.x)，设备: {device}, 语言: {lang}")
+
         self.ocr = PaddleOCR(
             lang=lang,
             device=device,
@@ -130,7 +131,7 @@ if __name__ == '__main__':
     print(f"PaddleOCR 版本: {paddleocr.__version__}")
 
     try:
-        detector = OCRDetector(use_gpu=False)
+        detector = OCRDetector(device='cpu')
         print("✓ OCR检测器初始化成功！")
 
         # 创建测试图像

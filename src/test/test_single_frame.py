@@ -6,9 +6,9 @@
 import cv2
 import sys
 from pathlib import Path
-from video_processor import VideoProcessor
-from ocr_detector import OCRDetector
-from phone_detector import PhoneDetector
+from src.core.video_processor import VideoProcessor
+from src.core.ocr_detector import OCRDetector
+from src.core.phone_detector import PhoneDetector
 
 
 def test_single_frame(video_path: str, frame_number: int = 0, save_debug: bool = True):
@@ -51,7 +51,7 @@ def test_single_frame(video_path: str, frame_number: int = 0, save_debug: bool =
     print("OCR 文本检测测试")
     print("=" * 80)
 
-    ocr_detector = OCRDetector(use_gpu=False)
+    ocr_detector = OCRDetector(device='cpu')
     detections = ocr_detector.detect_text(frame)
 
     print(f"\n检测到 {len(detections)} 个文本区域:")

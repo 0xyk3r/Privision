@@ -1,8 +1,6 @@
 .idea/
+api-data/
 examples/
-uploads/
-outputs/
-tasks/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
