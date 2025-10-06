@@ -120,6 +120,7 @@ class VideoProcessorUI:
                 table.add_row("缓冲时间", f"{buffer} 秒")
 
         table.add_row("GPU 加速", "✓ 是" if self.config.get('use_gpu', False) else "✗ 否")
+        table.add_row("精确定位", "✓ 是" if self.config.get('precise_phone_location', False) else "✗ 否")
 
         return Panel(
             table,
@@ -411,9 +412,10 @@ class VideoProcessorUI:
 
                 frame_idx += 1
 
-                # 处理当前帧
+                # 处理当前帧（debug=False确保不打印到控制台，使用回调传递日志到UI）
                 processed_frame, phone_count = video_processor.process_frame(
                     frame,
+                    debug=False,
                     detection_callback=on_detection
                 )
 
@@ -553,6 +555,21 @@ class VideoProcessorUI:
 
                     for bbox, text, confidence in detections:
                         if smart_processor.phone_detector.contains_phone(text):
+                            # 确定打码区域
+                            blur_bbox = bbox  # 默认使用原始bbox
+
+                            # 如果启用精确定位，尝试精确定位手机号
+                            if smart_processor.precise_phone_location and smart_processor.precise_locator:
+                                result = smart_processor.precise_locator.refine_phone_bbox(
+                                    frame, bbox, text, debug=False
+                                )
+                                if result is not None:
+                                    refined_bbox, refined_text = result
+                                    blur_bbox = refined_bbox
+                                    self.add_log(f"精确定位: '{text}' → '{refined_text}' ✓", "success")
+                                else:
+                                    self.add_log(f"精确定位失败: '{text}'，使用原始区域", "warning")
+
                             # 计算时间范围
                             time_point = (frame_idx - 1) / fps
                             buffer = smart_processor.buffer_time
@@ -560,7 +577,7 @@ class VideoProcessorUI:
                             end_time = min(total_frames / fps, time_point + buffer)
 
                             phone_regions.append({
-                                'bbox': bbox,
+                                'bbox': blur_bbox,  # 使用精确定位后的bbox
                                 'start_frame': int(start_time * fps),
                                 'end_frame': int(end_time * fps),
                                 'text': text

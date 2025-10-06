@@ -112,21 +112,47 @@ class PhoneDetector:
     @classmethod
     def find_phone_positions(cls, text: str) -> List[Tuple[str, int, int]]:
         """
-        查找文本中所有手机号及其位置
+        查找文本中所有手机号及其位置（返回在原始文本中的位置）
 
         Args:
             text: 待检测的文本
 
         Returns:
             (手机号, 起始位置, 结束位置) 的列表
+            注意：起始和结束位置是相对于原始文本的
         """
         if not text:
             return []
+
         # 移除空格、横线等分隔符后再匹配
         cleaned_text = re.sub(r'[\s\-\u3000]', '', text)
+
+        # 建立清理后位置到原始位置的映射
+        cleaned_to_original = []  # cleaned_to_original[i] = 原始文本中的位置
+        original_idx = 0
+        for char in text:
+            if not re.match(r'[\s\-\u3000]', char):  # 不是要清理的字符
+                cleaned_to_original.append(original_idx)
+            original_idx += 1
+
         results = []
         for match in cls.PHONE_PATTERN.finditer(cleaned_text):
-            results.append((match.group(), match.start(), match.end()))
+            phone_number = match.group()
+            cleaned_start = match.start()
+            cleaned_end = match.end()
+
+            # 映射回原始文本的位置
+            if cleaned_start < len(cleaned_to_original) and cleaned_end <= len(cleaned_to_original):
+                original_start = cleaned_to_original[cleaned_start]
+                # 结束位置是最后一个字符之后的位置
+                if cleaned_end < len(cleaned_to_original):
+                    original_end = cleaned_to_original[cleaned_end]
+                else:
+                    # 手机号在文本末尾
+                    original_end = len(text)
+
+                results.append((phone_number, original_start, original_end))
+
         return results
 
 

@@ -11,6 +11,7 @@ from pathlib import Path
 from ocr_detector import OCRDetector
 from phone_detector import PhoneDetector
 from debug_visualizer import DebugVisualizer
+from precise_locator import PreciseLocator
 
 
 class PhoneRegion:
@@ -45,7 +46,9 @@ class SmartVideoProcessor:
             blur_strength: int = 51,
             sample_interval: float = 1.0,
             buffer_time: float = None,
-            visualize: bool = False
+            visualize: bool = False,
+            precise_phone_location: bool = False,
+            precise_max_iterations: int = 3
     ):
         """
         初始化智能视频处理器
@@ -58,6 +61,8 @@ class SmartVideoProcessor:
             buffer_time: 缓冲时间（秒），识别点前后各扩展的时间
                         如果为 None，自动设置为 sample_interval（确保覆盖采样间隙）
             visualize: 是否启用可视化窗口
+            precise_phone_location: 是否启用精确定位（通过迭代验证精确定位手机号，避免打码其他文字）
+            precise_max_iterations: 精确定位的最大迭代次数
         """
         self.ocr_detector = OCRDetector(use_gpu=use_gpu)
         self.phone_detector = PhoneDetector()
@@ -66,6 +71,8 @@ class SmartVideoProcessor:
         self.sample_interval = sample_interval
         self.visualize = visualize
         self.visualizer = DebugVisualizer() if visualize else None
+        self.precise_phone_location = precise_phone_location
+        self.precise_locator = PreciseLocator(self.ocr_detector, max_iterations=precise_max_iterations) if precise_phone_location else None
 
         if visualize:
             print("\n=== 可视化模式已启用 ===")
@@ -221,6 +228,10 @@ class SmartVideoProcessor:
         print(f"  预计 OCR 次数: {total_frames // sample_frame_interval + 1} 次")
         print(f"  理论加速比: {sample_frame_interval}x")
         print(f"  采样覆盖策略: 每个识别点前后各 {self.buffer_time} 秒打码")
+        if self.precise_phone_location:
+            print(f"  精确定位: 已启用 (会对每个检测到的手机号进行精确定位)")
+        else:
+            print(f"  精确定位: 未启用 (打码整个OCR识别区域)")
 
         # 检查 FFmpeg 可用性
         has_ffmpeg = self._has_ffmpeg()
@@ -295,10 +306,25 @@ class SmartVideoProcessor:
                     phone_mask.append(is_phone)
 
                     if is_phone:
+                        # 确定打码区域
+                        blur_bbox = bbox  # 默认使用原始bbox
+
+                        # 如果启用精确定位，尝试精确定位手机号
+                        if self.precise_phone_location and self.precise_locator:
+                            result = self.precise_locator.refine_phone_bbox(
+                                frame, bbox, text, debug=True  # 启用调试模式
+                            )
+                            if result is not None:
+                                refined_bbox, refined_text = result
+                                blur_bbox = refined_bbox
+                                print(f"  [帧 {frame_idx}] ✓ 精确定位成功: '{text}' → '{refined_text}'")
+                            else:
+                                print(f"  [帧 {frame_idx}] ✗ 精确定位失败，使用原始bbox: '{text}'")
+
                         start_frame = max(0, frame_idx - buffer_frames)
                         end_frame = min(total_frames - 1, frame_idx + buffer_frames)
 
-                        region = PhoneRegion(bbox, text, confidence, start_frame, end_frame)
+                        region = PhoneRegion(blur_bbox, text, confidence, start_frame, end_frame)
                         phone_regions.append(region)
 
                         stats['unique_phones'].add(text)

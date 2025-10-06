@@ -120,12 +120,6 @@ python main_smart.py input.mp4 output.mp4 --sample-interval 2.0
 
 # 配置缓冲时间防止泄露
 python main_smart.py input.mp4 output.mp4 --buffer-time 0.5
-
-# 配合 GPU 使用
-python main_smart.py input.mp4 output.mp4 --use-gpu
-
-# 可视化模式（处理过程中显示视频窗口）
-python main_smart.py input.mp4 output.mp4 --visualize
 ```
 
 #### 默认模式（逐帧处理，最准确）
@@ -171,30 +165,37 @@ python main.py input.mp4 output.mp4 --use-gpu
 python main.py input.mp4 output.mp4 --visualize
 ```
 
-#### 完整示例
+**5. 精确定位模式**
 
 ```bash
-# 使用像素化打码 + GPU 加速
-python main.py video/test.mp4 video/test_masked.mp4 --blur-method pixelate --use-gpu
+# 通过多次迭代处理尽可能精确的识别手机号区域而不包含其他内容
+python main_smart.py input.mp4 output.mp4 --precise-phone-location [--precise-max-iterations 3]
+```
+
+#### 多选项示例
+
+```bash
+# 使用像素化打码 + GPU 加速 + 精确定位模式
+python main.py video/test.mp4 video/test_masked.mp4 --blur-method pixelate --use-gpu  --precise-phone-location
 ```
 
 #### 命令行参数
 
 ```
 位置参数:
-  input                 输入视频文件路径
-  output                输出视频文件路径
+  input                             输入视频文件路径
+  output                            输出视频文件路径
 
 可选参数:
-  -h, --help            显示帮助信息
-  --blur-method {gaussian,pixelate,black}
-                        打码方式 [默认: gaussian]
-  --blur-strength BLUR_STRENGTH
-                        模糊强度（高斯模糊核大小，必须为奇数）[默认: 51]
-  --use-gpu             使用GPU加速OCR识别
-  --sample-interval     采样间隔（秒），默认 1.0
-  --buffer-time         缓冲时间（秒），默认等于采样间隔
-  --visualize           可视化处理过程
+  -h, --help                        显示帮助信息
+  --blur-method                     打码方式 [默认: gaussian] {gaussian,pixelate,black}
+  --blur-strength                   模糊强度（高斯模糊核大小，必须为奇数）[默认: 51]
+  --use-gpu                         使用GPU加速OCR识别
+  --sample-interval                 采样间隔（秒），默认 1.0
+  --buffer-time                     缓冲时间（秒），默认等于采样间隔
+  --visualize                       可视化处理过程
+  --precise-phone-location          启用精确定位模式
+  --precise-max-iterations          精确定位最大迭代次数 [默认: 3]
 ```
 
 ### 方式二：API 模式
@@ -226,6 +227,8 @@ python api_server.py
 - `use_gpu` (可选): 是否使用GPU，默认 `false`
 - `sample_interval` (可选): 采样间隔（秒），默认 `1.0`
 - `buffer_time` (可选): 缓冲时间（秒），默认等于 `sample_interval`
+- `precise_phone_location` (可选): 是否启用精确定位模式，默认 `false`
+- `precise_max_iterations` (可选): 精确定位最大迭代次数，默认 `3`
 
 请求示例（curl）:
 

@@ -11,6 +11,7 @@ from pathlib import Path
 from ocr_detector import OCRDetector
 from phone_detector import PhoneDetector
 from debug_visualizer import DebugVisualizer
+from precise_locator import PreciseLocator
 
 
 class VideoProcessor:
@@ -21,7 +22,9 @@ class VideoProcessor:
             use_gpu: bool = False,
             blur_method: str = 'gaussian',
             blur_strength: int = 51,
-            visualize: bool = False
+            visualize: bool = False,
+            precise_phone_location: bool = False,
+            precise_max_iterations: int = 3
     ):
         """
         初始化视频处理器
@@ -31,6 +34,8 @@ class VideoProcessor:
             blur_method: 打码方式 ('gaussian'高斯模糊, 'pixelate'像素化, 'black'黑色遮挡)
             blur_strength: 模糊强度 (高斯模糊的核大小，必须为奇数)
             visualize: 是否启用可视化窗口
+            precise_phone_location: 是否启用精确定位（通过迭代验证精确定位手机号，避免打码其他文字）
+            precise_max_iterations: 精确定位的最大迭代次数
         """
         self.ocr_detector = OCRDetector(use_gpu=use_gpu)
         self.phone_detector = PhoneDetector()
@@ -38,6 +43,8 @@ class VideoProcessor:
         self.blur_strength = blur_strength if blur_strength % 2 == 1 else blur_strength + 1
         self.visualize = visualize
         self.visualizer = DebugVisualizer() if visualize else None
+        self.precise_phone_location = precise_phone_location
+        self.precise_locator = PreciseLocator(self.ocr_detector, max_iterations=precise_max_iterations) if precise_phone_location else None
 
         if visualize:
             print("\n=== 可视化模式已启用 ===")
@@ -195,8 +202,22 @@ class VideoProcessor:
             phone_mask.append(is_phone)
 
             if is_phone:
+                # 确定打码区域
+                blur_bbox = bbox  # 默认使用原始bbox
+
+                # 如果启用精确定位，尝试精确定位手机号
+                if self.precise_phone_location and self.precise_locator:
+                    result = self.precise_locator.refine_phone_bbox(
+                        frame, bbox, text, debug=debug
+                    )
+                    if result is not None:
+                        refined_bbox, refined_text = result
+                        blur_bbox = refined_bbox
+                        if debug:
+                            print(f"  → 使用精确定位的bbox ('{text}' → '{refined_text}')")
+
                 # 在手机号区域应用打码
-                processed_frame = self.apply_blur(processed_frame, bbox)
+                processed_frame = self.apply_blur(processed_frame, blur_bbox)
                 phone_count += 1
 
                 # 调用检测回调

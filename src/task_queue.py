@@ -43,6 +43,8 @@ class Task:
     use_gpu: bool = False
     sample_interval: float = 1.0
     buffer_time: Optional[float] = None
+    precise_phone_location: bool = False
+    precise_max_iterations: int = 3
 
     def to_dict(self) -> Dict:
         """转换为字典"""
@@ -238,7 +240,9 @@ class TaskQueue:
                 blur_strength=task.blur_strength,
                 sample_interval=task.sample_interval,
                 buffer_time=task.buffer_time,
-                visualize=False  # API模式不支持可视化
+                visualize=False,  # API模式不支持可视化
+                precise_phone_location=task.precise_phone_location,
+                precise_max_iterations=task.precise_max_iterations
             )
 
             # 处理视频（使用进度回调）
@@ -275,7 +279,9 @@ class TaskQueue:
         blur_strength: int = 51,
         use_gpu: bool = False,
         sample_interval: float = 1.0,
-        buffer_time: Optional[float] = None
+        buffer_time: Optional[float] = None,
+        precise_phone_location: bool = False,
+        precise_max_iterations: int = 3
     ) -> str:
         """
         创建新任务
@@ -288,6 +294,8 @@ class TaskQueue:
             use_gpu: 是否使用GPU
             sample_interval: 采样间隔
             buffer_time: 缓冲时间
+            precise_phone_location: 是否启用精确定位
+            precise_max_iterations: 精确定位的最大迭代次数
 
         Returns:
             任务ID
@@ -306,7 +314,9 @@ class TaskQueue:
             blur_strength=blur_strength,
             use_gpu=use_gpu,
             sample_interval=sample_interval,
-            buffer_time=buffer_time
+            buffer_time=buffer_time,
+            precise_phone_location=precise_phone_location,
+            precise_max_iterations=precise_max_iterations
         )
 
         with self.tasks_lock:

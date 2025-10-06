@@ -95,7 +95,9 @@ async def create_task(
     blur_strength: int = Form(51, description="模糊强度（仅高斯模糊）"),
     use_gpu: bool = Form(False, description="是否使用GPU加速"),
     sample_interval: float = Form(1.0, description="采样间隔（秒）"),
-    buffer_time: Optional[float] = Form(None, description="缓冲时间（秒）")
+    buffer_time: Optional[float] = Form(None, description="缓冲时间（秒）"),
+    precise_phone_location: bool = Form(False, description="是否启用精确定位（避免打码其他文字）"),
+    precise_max_iterations: int = Form(3, description="精确定位的最大迭代次数")
 ):
     """
     上传视频并创建处理任务
@@ -106,6 +108,8 @@ async def create_task(
     - **use_gpu**: 是否使用GPU加速OCR识别
     - **sample_interval**: 采样间隔（秒），建议0.5-2.0
     - **buffer_time**: 缓冲时间（秒），默认等于sample_interval
+    - **precise_phone_location**: 是否启用精确定位（通过迭代验证精确定位手机号，避免打码其他文字，会增加处理时间）
+    - **precise_max_iterations**: 精确定位的最大迭代次数（默认3次）
 
     返回任务ID，用于后续查询进度和下载结果
     """
@@ -157,7 +161,9 @@ async def create_task(
             blur_strength=blur_strength,
             use_gpu=use_gpu,
             sample_interval=sample_interval,
-            buffer_time=buffer_time
+            buffer_time=buffer_time,
+            precise_phone_location=precise_phone_location,
+            precise_max_iterations=precise_max_iterations
         )
 
         return TaskCreateResponse(

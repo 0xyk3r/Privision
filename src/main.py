@@ -73,6 +73,19 @@ def main():
         help='启用可视化窗口，实时显示检测结果'
     )
 
+    parser.add_argument(
+        '--precise-phone-location',
+        action='store_true',
+        help='启用精确定位（通过迭代验证精确定位手机号，避免打码其他文字，会增加处理时间）'
+    )
+
+    parser.add_argument(
+        '--precise-max-iterations',
+        type=int,
+        default=3,
+        help='精确定位的最大迭代次数 [默认: 3]'
+    )
+
     args = parser.parse_args()
 
     # 检查输入文件
@@ -99,7 +112,9 @@ def main():
             use_gpu=args.use_gpu,
             blur_method=args.blur_method,
             blur_strength=args.blur_strength,
-            visualize=args.visualize
+            visualize=args.visualize,
+            precise_phone_location=args.precise_phone_location,
+            precise_max_iterations=args.precise_max_iterations
         )
 
         # 在可视化模式下，直接调用处理器（不使用 terminal_ui）
@@ -116,7 +131,9 @@ def main():
                 'output': args.output,
                 'blur_method': args.blur_method,
                 'blur_strength': args.blur_strength,
-                'use_gpu': args.use_gpu
+                'use_gpu': args.use_gpu,
+                'precise_phone_location': args.precise_phone_location,
+                'precise_max_iterations': args.precise_max_iterations
             })
 
             stats = ui.process_video_with_ui(
