@@ -315,7 +315,16 @@ class RichUI(ProgressCallback):
         if not self.logs:
             content = Text("等待处理开始...", style="dim", justify="center")
         else:
-            max_display_logs = 20
+            # 动态计算可显示的日志行数，根据终端高度自适应
+            # 获取终端高度
+            terminal_height = self.console.size.height
+
+            # 终端高度 - header(9) - progress(4) - 面板边框和标题(4) - 统计面板最小空间
+            available_height = terminal_height - 9 - 4 - 4
+
+            # 确保至少显示5行，最多20行
+            max_display_logs = max(5, min(20, available_height))
+
             display_logs = list(self.logs)[-max_display_logs:]
             content = "\n".join(display_logs)
 
@@ -366,7 +375,7 @@ class RichUI(ProgressCallback):
         layout = Layout()
 
         layout.split_column(
-            Layout(name="header", size=8),
+            Layout(name="header", size=9),
             Layout(name="middle"),
             Layout(name="progress", size=4)
         )
