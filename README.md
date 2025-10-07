@@ -1,139 +1,141 @@
-# Privision - 视频内容智能脱敏工具
+# Privision - Video Content Privacy Masking Tool
+
+> [中文文档](README_zh.md) | English
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
-> **通用视频内容脱敏解决方案** - 基于 OCR 的智能信息识别与打码系统
+> **Universal Video Content Privacy Solution** - Intelligent Information Recognition and Masking System Based on OCR
 
-Privision 是一款强大的视频内容脱敏工具，采用先进的 OCR 技术自动识别并打码视频中的敏感信息。支持**手机号、身份证号、自定义关键字**等多种检测模式，提供命令行、批量处理和 RESTful API 三种使用方式。
+Privision is a powerful video content privacy masking tool that uses advanced OCR technology to automatically identify and mask sensitive information in videos. It supports multiple detection modes including **phone numbers, ID card numbers, and custom keywords**, and provides three usage methods: command-line interface, batch processing, and RESTful API.
 
-## 🌟 核心亮点
+## 🌟 Key Features
 
-### 🎯 多场景检测支持
+### 🎯 Multi-Scenario Detection Support
 
-- **📱 手机号检测**: 精确识别中国大陆 11 位手机号，智能过滤误报
-- **🆔 身份证号检测**: 识别中国大陆 18 位身份证号，包含基础有效性验证
-- **🔑 关键字检测**: 自定义关键字列表，灵活检测任意敏感词汇
-- **🔌 可扩展架构**: 基于工厂模式设计，轻松添加新的检测器类型
+- **📱 Phone Number Detection**: Accurately identifies 11-digit Chinese mainland phone numbers with smart false-positive filtering
+- **🆔 ID Card Number Detection**: Recognizes 18-digit Chinese mainland ID card numbers with basic validity verification
+- **🔑 Keyword Detection**: Custom keyword lists for flexible detection of any sensitive terms
+- **🔌 Extensible Architecture**: Factory pattern design for easy addition of new detector types
 
-### ⚡ 高性能处理
+### ⚡ High-Performance Processing
 
-- **🚀 双模式处理**:
-  - **逐帧模式**: 精确识别，适合高精度要求场景
-  - **智能采样模式**: 速度提升 10-30 倍，适合大多数场景
-- **💎 GPU 加速**: 支持 CUDA 加速，大幅提升处理速度
-- **🎯 精确定位**: 迭代优化算法，确保只打码目标内容，避免误伤
+- **🚀 Dual Processing Modes**:
+  - **Frame-by-Frame Mode**: Precise recognition for high-accuracy scenarios
+  - **Smart Sampling Mode**: 10-30x speed improvement for most scenarios
+- **💎 GPU Acceleration**: CUDA support for significantly improved processing speed
+- **🎯 Precise Positioning**: Iterative optimization algorithm ensuring only target content is masked, avoiding false positives
 
-### 🎨 灵活的打码方式
+### 🎨 Flexible Masking Methods
 
-- **高斯模糊 (Gaussian)**: 自然柔和的模糊效果
-- **像素化 (Pixelate)**: 经典马赛克效果
-- **黑色遮挡 (Black)**: 完全遮盖，强力保护
+- **Gaussian Blur**: Natural and smooth blur effect
+- **Pixelate**: Classic mosaic effect
+- **Black Mask**: Complete coverage for strong protection
 
-### 🛠 多种使用方式
+### 🛠 Multiple Usage Methods
 
-- **命令行工具**: 简单易用，适合单个视频处理
-- **批量处理**: 目录级批量处理，支持递归子目录
-- **RESTful API**: 完整的 HTTP API，支持异步任务队列
-- **可视化调试**: 实时预览检测结果和打码效果
+- **Command-Line Tool**: Simple and easy to use for single video processing
+- **Batch Processing**: Directory-level batch processing with recursive subdirectory support
+- **RESTful API**: Complete HTTP API with asynchronous task queue
+- **Visual Debugging**: Real-time preview of detection results and masking effects
 
-## 📋 目录
+## 📋 Table of Contents
 
-- [快速开始](#-快速开始)
-- [安装部署](#-安装部署)
-- [使用指南](#-使用指南)
-  - [命令行工具](#1-命令行工具)
-  - [批量处理](#2-批量处理)
-  - [API 服务](#3-api-服务)
-- [检测器说明](#-检测器说明)
-- [项目架构](#-项目架构)
-- [性能优化](#-性能优化)
-- [常见问题](#-常见问题)
+- [Quick Start](#-quick-start)
+- [Installation](#-installation)
+- [Usage Guide](#-usage-guide)
+  - [Command-Line Tool](#1-command-line-tool)
+  - [Batch Processing](#2-batch-processing)
+  - [API Service](#3-api-service)
+- [Detector Documentation](#-detector-documentation)
+- [Project Architecture](#-project-architecture)
+- [Performance Optimization](#-performance-optimization)
+- [FAQ](#-faq)
 
-## ⚡ 快速开始
+## ⚡ Quick Start
 
-### 安装
+### Installation
 
 ```bash
-# 克隆项目
+# Clone the repository
 git clone https://github.com/0xyk3r/Privision.git
 cd Privision
 
-# 开发模式安装（推荐）
+# Install in development mode (recommended)
 pip install -e .
 ```
 
-### 基本使用
+### Basic Usage
 
 ```bash
-# 1. 检测并打码手机号
+# 1. Detect and mask phone numbers
 privision input.mp4 output.mp4
 
-# 2. 检测身份证号
+# 2. Detect ID card numbers
 privision input.mp4 output.mp4 --detector idcard
 
-# 3. 检测自定义关键字
-privision input.mp4 output.mp4 --detector keyword --keywords 密码 账号 姓名
+# 3. Detect custom keywords
+privision input.mp4 output.mp4 --detector keyword --keywords password account name
 
-# 4. 智能采样模式（快速）
+# 4. Smart sampling mode (fast)
 privision input.mp4 output.mp4 --mode smart
 
-# 5. GPU 加速
+# 5. GPU acceleration
 privision input.mp4 output.mp4 --device gpu:0 --mode smart
 ```
 
-## 🚀 安装部署
+## 🚀 Installation
 
-### 环境要求
+### System Requirements
 
 - Python 3.8+
 - pip
-- (可选) NVIDIA GPU + CUDA Toolkit
+- (Optional) NVIDIA GPU + CUDA Toolkit
 
-### 安装步骤
+### Installation Steps
 
-#### 方式 1: 开发模式安装（推荐）
+#### Method 1: Development Mode Installation (Recommended)
 
 ```bash
-# 克隆项目
+# Clone the repository
 git clone https://github.com/0xyk3r/Privision.git
 cd Privision
 
-# 安装项目（开发模式）
+# Install project (development mode)
 pip install -e .
 
-# 验证安装
+# Verify installation
 privision --help
 ```
 
-安装后可直接使用以下命令：
-- `privision` - 单个视频处理
-- `privision-batch` - 批量处理
-- `privision-server` - API 服务器
+After installation, you can directly use the following commands:
+- `privision` - Single video processing
+- `privision-batch` - Batch processing
+- `privision-server` - API server
 
-#### 方式 2: 仅安装依赖
+#### Method 2: Install Dependencies Only
 
 ```bash
 cd Privision
 pip install -r requirements.txt
 ```
 
-> 使用此方式需通过 `python -m src.main` 运行程序
+> With this method, run the program using `python -m src.main`
 
-### GPU 加速安装
+### GPU Acceleration Installation
 
-**检查 CUDA 版本**:
+**Check CUDA Version**:
 ```bash
-nvidia-smi  # 查看右上角 "CUDA Version: xx.x"
+nvidia-smi  # Check "CUDA Version: xx.x" in the upper right corner
 ```
 
-**安装 GPU 依赖**:
+**Install GPU Dependencies**:
 
 ```bash
-# 先安装通用依赖
+# Install common dependencies first
 pip install -r requirements.txt
 
-# 根据 CUDA 版本选择安装
+# Choose installation based on CUDA version
 # CUDA 11.8
 python -m pip install paddlepaddle-gpu==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu118/
 
@@ -144,186 +146,186 @@ python -m pip install paddlepaddle-gpu==3.2.0 -i https://www.paddlepaddle.org.cn
 python -m pip install paddlepaddle-gpu==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu129/
 ```
 
-**验证 GPU 安装**:
+**Verify GPU Installation**:
 ```bash
 python -c "import paddle; print('GPU available:', paddle.device.is_compiled_with_cuda())"
 ```
 
-### 核心依赖
+### Core Dependencies
 
-- `paddlepaddle` >= 3.0.0 - 深度学习框架
-- `paddleocr` >= 3.0.0 - OCR 识别引擎
-- `opencv-python` >= 4.8.0 - 视频处理
-- `numpy` >= 1.24.0 - 数值计算
-- `fastapi` >= 0.104.0 - API 框架
-- `rich` >= 13.0.0 - 终端美化
+- `paddlepaddle` >= 3.0.0 - Deep learning framework
+- `paddleocr` >= 3.0.0 - OCR recognition engine
+- `opencv-python` >= 4.8.0 - Video processing
+- `numpy` >= 1.24.0 - Numerical computing
+- `fastapi` >= 0.104.0 - API framework
+- `rich` >= 13.0.0 - Terminal beautification
 
-## 📖 使用指南
+## 📖 Usage Guide
 
-### 1. 命令行工具
+### 1. Command-Line Tool
 
-#### 基本用法
+#### Basic Usage
 
 ```bash
-# 检测手机号（默认）
+# Detect phone numbers (default)
 privision input.mp4 output.mp4
 
-# 检测身份证号
+# Detect ID card numbers
 privision input.mp4 output.mp4 --detector idcard
 
-# 检测自定义关键字
-privision input.mp4 output.mp4 --detector keyword --keywords 密码 账号 用户名
+# Detect custom keywords
+privision input.mp4 output.mp4 --detector keyword --keywords password account username
 
-# 智能采样模式（推荐）
+# Smart sampling mode (recommended)
 privision input.mp4 output.mp4 --mode smart
 
-# GPU 加速
+# GPU acceleration
 privision input.mp4 output.mp4 --device gpu:0
 ```
 
-#### 高级选项
+#### Advanced Options
 
-**选择打码方式**:
+**Choose Masking Method**:
 ```bash
-# 高斯模糊（默认）
+# Gaussian blur (default)
 privision input.mp4 output.mp4 --blur-method gaussian
 
-# 像素化（马赛克）
+# Pixelate (mosaic)
 privision input.mp4 output.mp4 --blur-method pixelate
 
-# 黑色遮挡
+# Black mask
 privision input.mp4 output.mp4 --blur-method black
 ```
 
-**精确定位模式**:
+**Precise Location Mode**:
 ```bash
-# 启用精确定位，尽可能避免打码无关内容
+# Enable precise location to avoid masking irrelevant content
 privision input.mp4 output.mp4 --precise-location
 ```
 
-**可视化调试**:
+**Visual Debugging**:
 ```bash
-# 显示实时处理窗口
+# Show real-time processing window
 privision input.mp4 output.mp4 --visualize
 ```
 
-#### 完整参数
+#### Complete Parameters
 
 ```
-位置参数:
-  input                         输入视频文件路径
-  output                        输出视频文件路径
+Positional Arguments:
+  input                         Input video file path
+  output                        Output video file path
 
-检测器设置:
+Detector Settings:
   --detector {phone,keyword,idcard}
-                                检测器类型 [默认: phone]
-                                  phone   - 手机号检测
-                                  keyword - 关键字检测
-                                  idcard  - 身份证号检测
+                                Detector type [default: phone]
+                                  phone   - Phone number detection
+                                  keyword - Keyword detection
+                                  idcard  - ID card number detection
 
-  --keywords WORD [WORD ...]    关键字列表（仅 keyword 检测器）
-  --case-sensitive              关键字区分大小写（仅 keyword 检测器）
+  --keywords WORD [WORD ...]    Keyword list (keyword detector only)
+  --case-sensitive              Keywords are case-sensitive (keyword detector only)
 
-处理模式:
+Processing Mode:
   --mode {frame-by-frame,smart}
-                                处理模式 [默认: frame-by-frame]
-                                  frame-by-frame - 逐帧处理
-                                  smart          - 智能采样
+                                Processing mode [default: frame-by-frame]
+                                  frame-by-frame - Frame-by-frame processing
+                                  smart          - Smart sampling
 
-打码设置:
+Masking Settings:
   --blur-method {gaussian,pixelate,black}
-                                打码方式 [默认: gaussian]
-  --blur-strength INT           模糊强度（必须为奇数）[默认: 51]
+                                Masking method [default: gaussian]
+  --blur-strength INT           Blur strength (must be odd) [default: 51]
 
-设备设置:
-  --device DEVICE               计算设备 (cpu, gpu:0, gpu:1, ...) [默认: cpu]
+Device Settings:
+  --device DEVICE               Computing device (cpu, gpu:0, gpu:1, ...) [default: cpu]
 
-采样设置（仅 smart 模式）:
-  --sample-interval FLOAT       采样间隔（秒）[默认: 1.0]
-  --buffer-time FLOAT           缓冲时间（秒）
+Sampling Settings (smart mode only):
+  --sample-interval FLOAT       Sampling interval (seconds) [default: 1.0]
+  --buffer-time FLOAT           Buffer time (seconds)
 
-精确定位:
-  --precise-location            启用精确定位模式
-  --precise-max-iterations INT  最大迭代次数 [默认: 3]
+Precise Location:
+  --precise-location            Enable precise location mode
+  --precise-max-iterations INT  Maximum iterations [default: 3]
 
-界面设置:
-  --visualize                   启用可视化窗口
-  --no-rich                     禁用 Rich UI
+Interface Settings:
+  --visualize                   Enable visualization window
+  --no-rich                     Disable Rich UI
 
-其他:
-  -h, --help                    显示帮助信息
+Other:
+  -h, --help                    Show help message
 ```
 
-### 2. 批量处理
+### 2. Batch Processing
 
-使用 `privision-batch` 命令批量处理目录中的所有视频。
+Use the `privision-batch` command to batch process all videos in a directory.
 
-#### 基本用法
+#### Basic Usage
 
 ```bash
-# 批量处理目录
+# Batch process directory
 privision-batch input_dir/ output_dir/
 
-# 递归处理子目录
+# Process subdirectories recursively
 privision-batch input_dir/ output_dir/ --recursive
 
-# 使用身份证检测器批量处理
+# Use ID card detector for batch processing
 privision-batch input_dir/ output_dir/ --detector idcard
 
-# 智能模式 + GPU 加速
+# Smart mode + GPU acceleration
 privision-batch input_dir/ output_dir/ --mode smart --device gpu:0
 ```
 
-#### 参数说明
+#### Parameters
 
 ```
-位置参数:
-  input_dir                     输入视频目录
-  output_dir                    输出视频目录
+Positional Arguments:
+  input_dir                     Input video directory
+  output_dir                    Output video directory
 
-检测器设置:
+Detector Settings:
   --detector {phone,keyword,idcard}
-                                检测器类型 [默认: phone]
-  --keywords WORD [WORD ...]    关键字列表（仅 keyword 检测器）
-  --case-sensitive              关键字区分大小写
+                                Detector type [default: phone]
+  --keywords WORD [WORD ...]    Keyword list (keyword detector only)
+  --case-sensitive              Keywords are case-sensitive
 
-可选参数:
+Optional Arguments:
   --blur-method {gaussian,pixelate,black}
-                                打码方式 [默认: gaussian]
-  --device DEVICE               计算设备 [默认: cpu]
+                                Masking method [default: gaussian]
+  --device DEVICE               Computing device [default: cpu]
   --mode {frame-by-frame,smart}
-                                处理模式 [默认: frame-by-frame]
-  --recursive                   递归处理子目录
-  --output-suffix SUFFIX        输出文件后缀 [默认: _masked]
+                                Processing mode [default: frame-by-frame]
+  --recursive                   Process subdirectories recursively
+  --output-suffix SUFFIX        Output file suffix [default: _masked]
 ```
 
-支持的视频格式：`.mp4`, `.avi`, `.mov`, `.mkv`, `.flv`, `.wmv`, `.webm`
+Supported video formats: `.mp4`, `.avi`, `.mov`, `.mkv`, `.flv`, `.wmv`, `.webm`
 
-### 3. API 服务
+### 3. API Service
 
-使用 `privision-server` 启动 FastAPI 服务器，提供 RESTful API 接口。
+Use `privision-server` to start the FastAPI server, providing RESTful API endpoints.
 
-#### 启动服务器
+#### Start Server
 
 ```bash
-# 默认配置启动
+# Start with default configuration
 privision-server
 
-# 自定义端口
+# Custom port
 privision-server --port 9000
 
-# 自定义数据目录
+# Custom data directory
 privision-server --data-dir /path/to/data
 ```
 
-服务器启动后：
-- API 服务地址: http://localhost:8000
-- 交互式文档: http://localhost:8000/docs
-- API 文档: http://localhost:8000/redoc
+After server starts:
+- API Service: http://localhost:8000
+- Interactive Docs: http://localhost:8000/docs
+- API Documentation: http://localhost:8000/redoc
 
-#### API 接口
+#### API Endpoints
 
-**1. 创建任务**
+**1. Create Task**
 
 `POST /api/tasks`
 
@@ -335,28 +337,28 @@ curl -X POST "http://localhost:8000/api/tasks" \
   -F "device=cpu"
 ```
 
-支持的参数：
-- `file`: 要处理的视频文件（必需）
-- `detector_type`: 检测器类型 (phone/keyword/idcard)
-- `keywords`: 关键字列表（仅 keyword 检测器）
-- `case_sensitive`: 是否区分大小写（仅 keyword 检测器）
-- `blur_method`: 打码方式: (gaussian/pixelate/black)
-- `blur_strength`: 模糊强度（仅高斯模糊，奇数，默认 51）
-- `device`: 计算设备: (cpu, gpu:0, gpu:1, etc.)
-- `sample_interval`: 采样间隔（秒）
-- `buffer_time`: 缓冲时间（秒）
-- `precise_location`: 是否启用精确定位
-- `precise_max_iterations`: 精确定位最大迭代次数（默认 3）
+Supported parameters:
+- `file`: Video file to process (required)
+- `detector_type`: Detector type (phone/keyword/idcard)
+- `keywords`: Keyword list (keyword detector only)
+- `case_sensitive`: Case-sensitive (keyword detector only)
+- `blur_method`: Masking method (gaussian/pixelate/black)
+- `blur_strength`: Blur strength (Gaussian blur only, odd number, default 51)
+- `device`: Computing device (cpu, gpu:0, gpu:1, etc.)
+- `sample_interval`: Sampling interval (seconds)
+- `buffer_time`: Buffer time (seconds)
+- `precise_location`: Enable precise location
+- `precise_max_iterations`: Maximum iterations for precise location (default 3)
 
-响应:
+Response:
 ```json
 {
   "task_id": "550e8400-e29b-41d4-a716-446655440000",
-  "message": "任务创建成功"
+  "message": "Task created successfully"
 }
 ```
 
-**2. 查询任务进度**
+**2. Query Task Progress**
 
 `GET /api/tasks/{task_id}`
 
@@ -364,7 +366,7 @@ curl -X POST "http://localhost:8000/api/tasks" \
 curl "http://localhost:8000/api/tasks/{task_id}"
 ```
 
-**3. 下载处理结果**
+**3. Download Result**
 
 `GET /api/tasks/{task_id}/download`
 
@@ -372,19 +374,19 @@ curl "http://localhost:8000/api/tasks/{task_id}"
 curl -O -J "http://localhost:8000/api/tasks/{task_id}/download"
 ```
 
-**4. 获取任务列表**
+**4. Get Task List**
 
 `GET /api/tasks?status={status}&limit={limit}`
 
-支持的参数:
-- `status` (可选): 按状态过滤（pending/processing/completed/failed）
-- `limit` (可选): 返回的最大任务数，默认 100
+Supported parameters:
+- `status` (optional): Filter by status (pending/processing/completed/failed)
+- `limit` (optional): Maximum number of tasks to return, default 100
 
-**5. 删除任务**
+**5. Delete Task**
 
 `DELETE /api/tasks/{task_id}`
 
-#### Python 客户端示例
+#### Python Client Example
 
 ```python
 import requests
@@ -392,7 +394,7 @@ import time
 
 API_BASE = "http://localhost:8000"
 
-# 1. 上传视频
+# 1. Upload video
 with open("test.mp4", "rb") as f:
     files = {"file": f}
     data = {
@@ -403,7 +405,7 @@ with open("test.mp4", "rb") as f:
     response = requests.post(f"{API_BASE}/api/tasks", files=files, data=data)
     task_id = response.json()["task_id"]
 
-# 2. 轮询进度
+# 2. Poll for progress
 while True:
     response = requests.get(f"{API_BASE}/api/tasks/{task_id}")
     status = response.json()
@@ -412,297 +414,297 @@ while True:
         break
     time.sleep(2)
 
-# 3. 下载结果
+# 3. Download result
 response = requests.get(f"{API_BASE}/api/tasks/{task_id}/download")
 with open("output.mp4", "wb") as f:
     f.write(response.content)
 ```
 
-## 🎯 检测器说明
+## 🎯 Detector Documentation
 
-### 1. 手机号检测器 (phone)
+### 1. Phone Number Detector (phone)
 
-**功能**: 识别中国大陆 11 位手机号
+**Function**: Identifies 11-digit Chinese mainland phone numbers
 
-**特点**:
-- 正则匹配：`1[3-9]\d{9}`
-- 智能过滤长数字串和误报
-- 上下文验证，避免误识别
+**Features**:
+- Regex matching: `1[3-9]\d{9}`
+- Smart filtering of long digit strings and false positives
+- Context validation to avoid misidentification
 
-**使用**:
+**Usage**:
 ```bash
 privision input.mp4 output.mp4 --detector phone
 ```
 
-### 2. 身份证号检测器 (idcard)
+### 2. ID Card Number Detector (idcard)
 
-**功能**: 识别中国大陆 18 位身份证号
+**Function**: Identifies 18-digit Chinese mainland ID card numbers
 
-**特点**:
-- 正则匹配：`\d{17}[\dXx]`
-- 日期有效性验证
-- 排除无效号码
+**Features**:
+- Regex matching: `\d{17}[\dXx]`
+- Date validity verification
+- Excludes invalid numbers
 
-**使用**:
+**Usage**:
 ```bash
 privision input.mp4 output.mp4 --detector idcard
 ```
 
-### 3. 关键字检测器 (keyword)
+### 3. Keyword Detector (keyword)
 
-**功能**: 检测自定义关键字
+**Function**: Detects custom keywords
 
-**特点**:
-- 支持自定义关键字列表
-- 支持中英文混合
-- 可选大小写敏感
-- 智能边界匹配
+**Features**:
+- Custom keyword list support
+- Chinese and English mixed support
+- Optional case sensitivity
+- Smart boundary matching
 
-**使用**:
+**Usage**:
 ```bash
-# 默认关键字（密码、账号、用户名等）
+# Default keywords (password, account, username, etc.)
 privision input.mp4 output.mp4 --detector keyword
 
-# 自定义关键字
-privision input.mp4 output.mp4 --detector keyword --keywords 姓名 电话 地址
+# Custom keywords
+privision input.mp4 output.mp4 --detector keyword --keywords name phone address
 
-# 区分大小写
+# Case-sensitive
 privision input.mp4 output.mp4 --detector keyword --keywords Password --case-sensitive
 ```
 
-### 扩展自定义检测器
+### Extending Custom Detectors
 
-项目采用工厂模式设计，可轻松扩展新的检测器：
+The project uses factory pattern design for easy extension of new detectors:
 
-1. 继承 `BaseDetector` 基类
-2. 实现必需的抽象方法
-3. 在 `DetectorFactory` 中注册
+1. Inherit from `BaseDetector` base class
+2. Implement required abstract methods
+3. Register in `DetectorFactory`
 
-详见 `src/core/detector_base.py` 和 `src/core/detector_factory.py`
+See `src/core/detector_base.py` and `src/core/detector_factory.py` for details
 
-## 🏗 项目架构
+## 🏗 Project Architecture
 
-### 目录结构
+### Directory Structure
 
 ```
 Privision/
-├── src/                          # 源代码
-│   ├── main.py                   # CLI 入口
-│   ├── batch.py                  # 批量处理入口
-│   ├── server.py                 # API 服务器入口
+├── src/                          # Source code
+│   ├── main.py                   # CLI entry point
+│   ├── batch.py                  # Batch processing entry
+│   ├── server.py                 # API server entry
 │   │
-│   ├── core/                     # 核心功能
-│   │   ├── video_processor.py   # 视频处理器（逐帧/智能）
-│   │   ├── ocr_detector.py      # OCR 检测
-│   │   ├── detector_base.py     # 检测器基类
-│   │   ├── detector_factory.py  # 检测器工厂
-│   │   ├── detectors/           # 检测器实现
+│   ├── core/                     # Core functionality
+│   │   ├── video_processor.py   # Video processor (frame-by-frame/smart)
+│   │   ├── ocr_detector.py      # OCR detection
+│   │   ├── detector_base.py     # Detector base class
+│   │   ├── detector_factory.py  # Detector factory
+│   │   ├── detectors/           # Detector implementations
 │   │   │   ├── phone_detector.py
 │   │   │   ├── idcard_detector.py
 │   │   │   └── keyword_detector.py
-│   │   ├── precise_locator.py   # 精确定位
-│   │   ├── blur.py              # 打码效果
-│   │   └── bbox_calculator.py   # 边界框计算
+│   │   ├── precise_locator.py   # Precise location
+│   │   ├── blur.py              # Masking effects
+│   │   └── bbox_calculator.py   # Bounding box calculation
 │   │
-│   ├── api/                      # API 服务
-│   │   └── task_queue.py        # 任务队列管理
+│   ├── api/                      # API service
+│   │   └── task_queue.py        # Task queue management
 │   │
-│   ├── ui/                       # 用户界面
-│   │   ├── rich_ui.py           # Rich 终端 UI
-│   │   ├── progress.py          # 进度回调接口
-│   │   └── visualizer.py        # 可视化窗口
+│   ├── ui/                       # User interface
+│   │   ├── rich_ui.py           # Rich terminal UI
+│   │   ├── progress.py          # Progress callback interface
+│   │   └── visualizer.py        # Visualization window
 │   │
-│   ├── config/                   # 配置管理
-│   │   └── args.py              # 参数解析
+│   ├── config/                   # Configuration management
+│   │   └── args.py              # Argument parsing
 │   │
-│   └── test/                     # 测试模块
+│   └── test/                     # Test modules
 │
-├── pyproject.toml                # 项目配置
-├── requirements.txt              # 依赖列表
-├── README.md                     # 本文档
+├── pyproject.toml                # Project configuration
+├── requirements.txt              # Dependency list
+├── README.md                     # This document
 ```
 
-### 核心模块
+### Core Modules
 
-#### 检测器架构
+#### Detector Architecture
 
 ```
-BaseDetector (抽象基类)
-    ├── PhoneDetector (手机号)
-    ├── IDCardDetector (身份证号)
-    └── KeywordDetector (关键字)
+BaseDetector (Abstract Base Class)
+    ├── PhoneDetector (Phone numbers)
+    ├── IDCardDetector (ID card numbers)
+    └── KeywordDetector (Keywords)
 
-DetectorFactory (工厂)
+DetectorFactory (Factory)
     └── create_detector()
 ```
 
-#### 处理流程
+#### Processing Flow
 
-**逐帧模式**:
+**Frame-by-Frame Mode**:
 ```
-视频输入 → 逐帧读取 → OCR → 检测器 → 精确定位(可选) → 打码 → 输出
-```
-
-**智能采样模式**:
-```
-视频输入 → 定期采样 → OCR → 检测器 → 记录区域 → 批量打码 → 输出
+Video Input → Frame-by-Frame Read → OCR → Detector → Precise Location (optional) → Mask → Output
 ```
 
-### 技术栈
+**Smart Sampling Mode**:
+```
+Video Input → Periodic Sampling → OCR → Detector → Record Areas → Batch Mask → Output
+```
 
-- **PaddleOCR**: 文本检测和识别
-- **OpenCV**: 视频处理和打码
-- **FastAPI**: RESTful API 框架
-- **Rich**: 终端美化
-- **NumPy**: 数值计算
+### Technology Stack
 
-## 🚀 性能优化
+- **PaddleOCR**: Text detection and recognition
+- **OpenCV**: Video processing and masking
+- **FastAPI**: RESTful API framework
+- **Rich**: Terminal beautification
+- **NumPy**: Numerical computing
 
-### 推荐配置
+## 🚀 Performance Optimization
 
-**1. 使用 GPU 加速**
+### Recommended Configuration
+
+**1. Use GPU Acceleration**
 ```bash
 privision input.mp4 output.mp4 --device gpu:0
 ```
-GPU 可提升 OCR 速度 3-10 倍
+GPU can improve OCR speed by 3-10x
 
-**2. 使用智能采样模式**
+**2. Use Smart Sampling Mode**
 ```bash
 privision input.mp4 output.mp4 --mode smart
 ```
-速度提升 10-30 倍，适合大部分场景
+Speed improvement of 10-30x, suitable for most scenarios
 
-**3. 调整采样间隔**
+**3. Adjust Sampling Interval**
 ```bash
-# 静态场景（手机号位置变化慢）
+# Static scenes (phone number position changes slowly)
 privision input.mp4 output.mp4 --mode smart --sample-interval 2.0
 
-# 动态场景（手机号位置变化快）
+# Dynamic scenes (phone number position changes quickly)
 privision input.mp4 output.mp4 --mode smart --sample-interval 0.5
 ```
 
-**4. 视频预处理**
-- 超高分辨率视频建议先降低分辨率
-- 使用 H.264 编码提高处理速度
+**4. Video Preprocessing**
+- Ultra-high resolution videos should be downscaled first
+- Use H.264 encoding for faster processing
 
-**5. API 并发处理**
+**5. API Concurrent Processing**
 
-修改 `src/api/task_queue.py` 中的 `max_workers` 参数：
+Modify the `max_workers` parameter in `src/api/task_queue.py`:
 ```python
-get_task_queue(storage_dir=TASKS_DIR, max_workers=2)  # 增加并发数
+get_task_queue(storage_dir=TASKS_DIR, max_workers=2)  # Increase concurrency
 ```
 
-## 🔧 常见问题
+## 🔧 FAQ
 
-### Q1: 如何验证 GPU 是否可用？
+### Q1: How to verify GPU availability?
 
 ```bash
-# 检查 CUDA
+# Check CUDA
 nvidia-smi
 
-# 检查 PaddlePaddle GPU 支持
+# Check PaddlePaddle GPU support
 python -c "import paddle; print('GPU available:', paddle.device.is_compiled_with_cuda())"
 ```
 
-### Q2: 为什么不能直接运行 `python src/main.py`？
+### Q2: Why can't I directly run `python src/main.py`?
 
-由于导入语句使用了 `src.xxx` 格式，Python 需要将 `src` 作为包导入。
+Because import statements use the `src.xxx` format, Python needs to import `src` as a package.
 
-**解决方案**:
-- 使用 `python -m src.main` 运行
-- 或使用 `pip install -e .` 安装后直接使用 `privision` 命令
+**Solutions**:
+- Run using `python -m src.main`
+- Or install using `pip install -e .` and directly use the `privision` command
 
-### Q3: 首次运行很慢？
+### Q3: Why is the first run slow?
 
-首次运行会自动下载 PaddleOCR 模型文件（约 100-200 MB），需要网络连接。下载后会缓存在本地。
+The first run automatically downloads PaddleOCR model files (about 100-200 MB), requiring network connection. After downloading, files are cached locally.
 
-### Q4: 如何提高识别准确率？
+### Q4: How to improve recognition accuracy?
 
-1. 确保视频清晰度足够
-2. 使用逐帧模式而非智能采样
-3. 启用精确定位模式：`--precise-location`
-4. 复杂字体或背景会影响 OCR 效果
+1. Ensure video clarity is sufficient
+2. Use frame-by-frame mode instead of smart sampling
+3. Enable precise location mode: `--precise-location`
+4. Complex fonts or backgrounds affect OCR performance
 
-### Q5: 如何添加新的检测器？
+### Q5: How to add new detectors?
 
-1. 在 `src/core/detectors/` 创建新的检测器类
-2. 继承 `BaseDetector` 并实现必需方法
-3. 在 `DetectorFactory._detectors` 中注册
-4. 更新命令行参数和文档
+1. Create a new detector class in `src/core/detectors/`
+2. Inherit from `BaseDetector` and implement required methods
+3. Register in `DetectorFactory._detectors`
+4. Update command-line arguments and documentation
 
-### Q6: 支持哪些视频格式？
+### Q6: What video formats are supported?
 
-支持所有 OpenCV 支持的格式：`.mp4`, `.avi`, `.mov`, `.mkv`, `.flv`, `.wmv`, `.webm`
+Supports all formats supported by OpenCV: `.mp4`, `.avi`, `.mov`, `.mkv`, `.flv`, `.wmv`, `.webm`
 
-输出格式当前仅支持 MP4。
+Output format currently only supports MP4.
 
-### Q7: 如何在生产环境部署 API 服务？
+### Q7: How to deploy API service in production?
 
-1. 使用反向代理（如 Nginx）
-2. 配置 HTTPS
-3. 修改 CORS 设置（在 `src/server.py` 中）
-4. 使用进程管理工具（如 systemd、supervisor）
-5. 配置日志和监控
+1. Use reverse proxy (such as Nginx)
+2. Configure HTTPS
+3. Modify CORS settings (in `src/server.py`)
+4. Use process management tools (such as systemd, supervisor)
+5. Configure logging and monitoring
 
-## 🛠 开发指南
+## 🛠 Development Guide
 
-### 开发环境设置
+### Development Environment Setup
 
 ```bash
-# 克隆项目
+# Clone repository
 git clone https://github.com/0xyk3r/Privision.git
 cd Privision
 
-# 安装开发依赖
+# Install development dependencies
 pip install -e ".[dev]"
 ```
 
-### 运行测试
+### Run Tests
 
 ```bash
-# 运行所有测试
+# Run all tests
 pytest src/test/
 
-# 运行特定测试
+# Run specific tests
 python -m src.test.test_phone_filter
 python -m src.test.test_ocr_and_detector
 ```
 
-### 代码结构设计
+### Code Structure Design
 
-- **分离关注点**: 核心功能、API、UI 和配置独立模块化
-- **配置驱动**: 使用 `ProcessConfig` 统一管理配置
-- **接口抽象**: `ProgressCallback` 接口解耦业务和 UI
-- **工厂模式**: `DetectorFactory` 管理检测器创建
-- **可扩展性**: 易于添加新的检测器、打码方法和 UI
+- **Separation of Concerns**: Core functionality, API, UI, and configuration are independently modularized
+- **Configuration-Driven**: Use `ProcessConfig` for unified configuration management
+- **Interface Abstraction**: `ProgressCallback` interface decouples business logic from UI
+- **Factory Pattern**: `DetectorFactory` manages detector creation
+- **Extensibility**: Easy to add new detectors, masking methods, and UIs
 
-### 贡献指南
+### Contributing
 
-欢迎提交 Issue 和 Pull Request！
+Issues and Pull Requests are welcome!
 
-1. Fork 项目
-2. 创建功能分支 (`git checkout -b feature/YourFeature`)
-3. 提交更改 (`git commit -m 'Add some YourFeature'`)
-4. 推送到分支 (`git push origin feature/YourFeature`)
-5. 打开 Pull Request
+1. Fork the project
+2. Create a feature branch (`git checkout -b feature/YourFeature`)
+3. Commit changes (`git commit -m 'Add some YourFeature'`)
+4. Push to branch (`git push origin feature/YourFeature`)
+5. Open a Pull Request
 
-## 📄 许可证
+## 📄 License
 
-本项目采用 [MIT 许可证](LICENSE)。
+This project is licensed under the [MIT License](LICENSE).
 
-## 🙏 致谢
+## 🙏 Acknowledgments
 
-- [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) - OCR 工具
-- [OpenCV](https://opencv.org/) - 计算机视觉库
-- [FastAPI](https://fastapi.tiangolo.com/) - 现代 Web 框架
-- [Rich](https://github.com/Textualize/rich) - 终端美化库
+- [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) - OCR toolkit
+- [OpenCV](https://opencv.org/) - Computer vision library
+- [FastAPI](https://fastapi.tiangolo.com/) - Modern web framework
+- [Rich](https://github.com/Textualize/rich) - Terminal beautification library
 
-## 📧 联系方式
+## 📧 Contact
 
-- 作者: 0xyk3r
+- Author: 0xyk3r
 - GitHub: [https://github.com/0xyk3r/Privision](https://github.com/0xyk3r/Privision)
 - Issues: [https://github.com/0xyk3r/Privision/issues](https://github.com/0xyk3r/Privision/issues)
 
 ---
 
-**注意**: 本工具仅用于合法的隐私保护用途，请勿用于非法目的。使用本工具处理的视频内容，用户需自行承担相关法律责任。
+**Note**: This tool is only for legal privacy protection purposes and should not be used for illegal purposes. Users are responsible for any legal liability related to videos processed with this tool.
