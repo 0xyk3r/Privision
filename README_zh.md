@@ -2,12 +2,22 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI version](https://img.shields.io/pypi/v/privision.svg)](https://pypi.org/project/privision/)
+[![GitHub issues](https://img.shields.io/github/issues/0xyk3r/Privision.svg)](https://github.com/0xyk3r/Privision/issues)
+[![GitHub stars](https://img.shields.io/github/stars/0xyk3r/Privision.svg)](https://github.com/0xyk3r/Privision/stargazers)
 
 > **通用视频内容脱敏解决方案** - 基于 OCR 的智能信息识别与打码系统
 
 > 中文 | [English](README.md)
 
 Privision 是一款强大的视频内容脱敏工具，采用先进的 OCR 技术自动识别并打码视频中的敏感信息。支持**手机号、身份证号、自定义关键字**等多种检测模式，提供命令行、批量处理和 RESTful API 三种使用方式。
+
+## 📸 效果展示
+
+<div align="center">
+  <img src="docs/1.png" alt="效果图 1" width="45%">
+  <img src="docs/2.png" alt="效果图 2" width="45%">
+</div>
 
 ## 🌟 核心亮点
 
@@ -93,9 +103,11 @@ privision input.mp4 output.mp4 --device gpu:0 --mode smart
 - pip
 - (可选) NVIDIA GPU + CUDA Toolkit
 
-### 用户安装：从 PyPI 安装
+---
 
-**安装最新稳定版本：**
+### 👥 用户安装：从 PyPI 安装（推荐）
+
+最简单的安装方式是直接从 PyPI 安装：
 
 ```bash
 # 从 PyPI 安装
@@ -105,12 +117,12 @@ pip install privision
 privision --help
 ```
 
-安装后可直接使用以下命令：
+✅ **安装后可立即使用：**
 - `privision` - 单个视频处理
 - `privision-batch` - 批量处理
 - `privision-server` - API 服务器
 
-**基本使用示例：**
+**快速示例：**
 ```bash
 # 检测并打码手机号
 privision input.mp4 output.mp4
@@ -119,28 +131,38 @@ privision input.mp4 output.mp4
 privision input.mp4 output.mp4 --mode smart
 ```
 
-### 开发者安装：从源码安装
+> 💡 **提示：** 如需 GPU 加速，请参考下方 [GPU 加速安装](#gpu-加速安装)。
 
-#### 方式 1: 开发模式安装（推荐）
+---
+
+### 👨‍💻 开发者安装：从源码安装
+
+如果你想为项目做贡献或自定义代码，请从源码安装：
+
+#### 方式 1: 开发模式安装
+
+此方式以可编辑模式安装包，源代码的修改会立即生效：
 
 ```bash
 # 克隆项目
 git clone https://github.com/0xyk3r/Privision.git
 cd Privision
 
-# 开发模式安装
+# 开发模式安装（可编辑）
 pip install -e .
 
 # 验证安装
 privision --help
 ```
 
-安装后可直接使用以下命令：
-- `privision` - 单个视频处理
-- `privision-batch` - 批量处理
-- `privision-server` - API 服务器
+✅ **优势：**
+- 代码修改立即生效
+- 所有命令行工具可用：`privision`、`privision-batch`、`privision-server`
+- 方便测试和调试
 
-#### 方式 2: 仅安装依赖
+#### 方式 2: 仅安装依赖（直接运行）
+
+如果你更喜欢直接运行代码而不安装：
 
 ```bash
 # 克隆项目
@@ -149,24 +171,34 @@ cd Privision
 
 # 仅安装依赖
 pip install -r requirements.txt
+
+# 直接以模块方式运行
+python -m privision.main input.mp4 output.mp4
+python -m privision.batch input_dir/ output_dir/
+python -m privision.server
 ```
 
-> 使用此方式需通过 `python -m privision.main` 运行程序
+⚠️ **注意：** 使用此方式需要使用 `python -m privision.main` 而不是 `privision` 命令。
+
+---
 
 ### GPU 加速安装
 
-**检查 CUDA 版本**:
+启用 GPU 加速可显著提升处理速度：
+
+**步骤 1: 检查 CUDA 版本**
 ```bash
 nvidia-smi  # 查看右上角 "CUDA Version: xx.x"
 ```
 
-**安装 GPU 依赖**:
+**步骤 2: 安装依赖**
 
 ```bash
 # 先安装通用依赖
 pip install -r requirements.txt
 
-# 根据 CUDA 版本选择安装
+# 然后根据 CUDA 版本安装 PaddlePaddle GPU 版本：
+
 # CUDA 11.8
 python -m pip install paddlepaddle-gpu==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu118/
 
@@ -177,10 +209,14 @@ python -m pip install paddlepaddle-gpu==3.2.0 -i https://www.paddlepaddle.org.cn
 python -m pip install paddlepaddle-gpu==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu129/
 ```
 
-**验证 GPU 安装**:
+**步骤 3: 验证 GPU 安装**
 ```bash
 python -c "import paddle; print('GPU available:', paddle.device.is_compiled_with_cuda())"
 ```
+
+✅ 预期输出：`GPU available: True`
+
+---
 
 ### 核心依赖
 

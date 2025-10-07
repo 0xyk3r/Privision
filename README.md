@@ -2,12 +2,22 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI version](https://img.shields.io/pypi/v/privision.svg)](https://pypi.org/project/privision/)
+[![GitHub issues](https://img.shields.io/github/issues/0xyk3r/Privision.svg)](https://github.com/0xyk3r/Privision/issues)
+[![GitHub stars](https://img.shields.io/github/stars/0xyk3r/Privision.svg)](https://github.com/0xyk3r/Privision/stargazers)
 
 > **Universal Video Content Privacy Solution** - Intelligent Information Recognition and Masking System Based on OCR
 
 > [中文文档](README_zh.md) | English
 
 Privision is a powerful video content privacy masking tool that uses advanced OCR technology to automatically identify and mask sensitive information in videos. It supports multiple detection modes including **phone numbers, ID card numbers, and custom keywords**, and provides three usage methods: command-line interface, batch processing, and RESTful API.
+
+## 📸 Screenshots
+
+<div align="center">
+  <img src="docs/1.png" alt="Screenshot 1" width="45%">
+  <img src="docs/2.png" alt="Screenshot 2" width="45%">
+</div>
 
 ## 🌟 Key Features
 
@@ -93,9 +103,11 @@ privision input.mp4 output.mp4 --device gpu:0 --mode smart
 - pip
 - (Optional) NVIDIA GPU + CUDA Toolkit
 
-### For Users: Install from PyPI
+---
 
-**Install the latest stable version:**
+### 👥 For Users: Install from PyPI (Recommended)
+
+The easiest way to install Privision is directly from PyPI:
 
 ```bash
 # Install from PyPI
@@ -105,12 +117,12 @@ pip install privision
 privision --help
 ```
 
-After installation, you can directly use the following commands:
+✅ **After installation, you can immediately use:**
 - `privision` - Single video processing
 - `privision-batch` - Batch processing
 - `privision-server` - API server
 
-**Basic usage example:**
+**Quick example:**
 ```bash
 # Detect and mask phone numbers
 privision input.mp4 output.mp4
@@ -119,28 +131,38 @@ privision input.mp4 output.mp4
 privision input.mp4 output.mp4 --mode smart
 ```
 
-### For Developers: Install from Source
+> 💡 **Note:** For GPU acceleration, see [GPU Acceleration Installation](#gpu-acceleration-installation) below.
 
-#### Method 1: Development Mode Installation (Recommended)
+---
+
+### 👨‍💻 For Developers: Install from Source
+
+If you want to contribute to the project or customize the code, install from source:
+
+#### Method 1: Development Mode Installation
+
+This method installs the package in editable mode, so changes to the source code are immediately reflected:
 
 ```bash
 # Clone the repository
 git clone https://github.com/0xyk3r/Privision.git
 cd Privision
 
-# Install in development mode
+# Install in development mode (editable)
 pip install -e .
 
 # Verify installation
 privision --help
 ```
 
-After installation, you can directly use the following commands:
-- `privision` - Single video processing
-- `privision-batch` - Batch processing
-- `privision-server` - API server
+✅ **Benefits:**
+- Code changes take effect immediately
+- All command-line tools available: `privision`, `privision-batch`, `privision-server`
+- Easy to test and debug
 
-#### Method 2: Install Dependencies Only
+#### Method 2: Install Dependencies Only (For Direct Execution)
+
+If you prefer to run the code directly without installation:
 
 ```bash
 # Clone the repository
@@ -149,38 +171,52 @@ cd Privision
 
 # Install dependencies only
 pip install -r requirements.txt
+
+# Run directly as a module
+python -m privision.main input.mp4 output.mp4
+python -m privision.batch input_dir/ output_dir/
+python -m privision.server
 ```
 
-> With this method, run the program using `python -m privision.main`
+⚠️ **Note:** With this method, you must use `python -m privision.main` instead of `privision` command.
+
+---
 
 ### GPU Acceleration Installation
 
-**Check CUDA Version**:
+To enable GPU acceleration for significantly faster processing:
+
+**Step 1: Check your CUDA version**
 ```bash
-nvidia-smi  # Check "CUDA Version: xx.x" in the upper right corner
+nvidia-smi  # Look for "CUDA Version: xx.x" in the upper right corner
 ```
 
-**Install GPU Dependencies**:
+**Step 2: Install dependencies**
 
 ```bash
-# Install common dependencies first
+# First install common dependencies
 pip install -r requirements.txt
 
-# Choose installation based on CUDA version
-# CUDA 11.8
+# Then install PaddlePaddle GPU version based on your CUDA version:
+
+# For CUDA 11.8
 python -m pip install paddlepaddle-gpu==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu118/
 
-# CUDA 12.6
+# For CUDA 12.6
 python -m pip install paddlepaddle-gpu==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu126/
 
-# CUDA 12.9
+# For CUDA 12.9
 python -m pip install paddlepaddle-gpu==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu129/
 ```
 
-**Verify GPU Installation**:
+**Step 3: Verify GPU installation**
 ```bash
 python -c "import paddle; print('GPU available:', paddle.device.is_compiled_with_cuda())"
 ```
+
+✅ Expected output: `GPU available: True`
+
+---
 
 ### Core Dependencies
 
