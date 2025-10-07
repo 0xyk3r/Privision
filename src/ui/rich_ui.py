@@ -152,6 +152,10 @@ class RichUI(ProgressCallback):
         self.add_log(f"错误: {str(error)}", "error")
         self.stop_ui()
 
+    def on_ocr_call(self):
+        """OCR调用时更新计数"""
+        self.stats['ocr_calls'] += 1
+
     # ========== UI 渲染方法 ==========
 
     def add_log(self, message: str, level: str = "info"):
@@ -290,11 +294,10 @@ class RichUI(ProgressCallback):
         # 根据阶段显示不同的统计
         if self.current_phase == "sampling":
             table.add_row("已扫描帧", f"{processed}/{total}")
-            table.add_row("OCR调用", str(self.stats['ocr_calls']))
-            table.add_row("发现目标内容", f"{self.stats['total_patterns_detected']} 个")
+            table.add_row("OCR 调用", str(self.stats['ocr_calls']))
+            table.add_row("检测目标", f"{self.stats['total_patterns_detected']} 个")
         elif self.current_phase == "blurring":
             table.add_row("已处理", f"{processed}/{total}")
-            table.add_row("已打码", f"{self.stats['frames_with_patterns']} 帧")
         else:
             table.add_row("已处理", f"{processed}/{total}")
             table.add_row("含目标内容", f"{self.stats['frames_with_patterns']} 帧")
@@ -401,9 +404,9 @@ class RichUI(ProgressCallback):
         avg_fps = stats.get('processed_frames', 0) / elapsed if elapsed > 0 else 0
 
         table.add_row("总帧数", str(stats.get('total_frames', 0)))
-        table.add_row("处理帧数", str(stats.get('processed_frames', 0)))
-        table.add_row("包含目标内容", f"{stats.get('frames_with_patterns', 0)} 帧")
-        table.add_row("检测总数", f"{stats.get('total_patterns_detected', 0)} 个")
+        table.add_row("扫描帧数", str(stats.get('processed_frames', 0)))
+        table.add_row("检测帧数", f"{stats.get('frames_with_detections', 0)} 帧")
+        table.add_row("检测总数", f"{stats.get('total_detections', 0)} 个")
 
         if 'ocr_calls' in stats:
             total_frames = stats.get('total_frames', 0)
@@ -413,9 +416,9 @@ class RichUI(ProgressCallback):
             table.add_row("节省调用", f"{total_frames - ocr_calls} 次")
             table.add_row("加速比", f"{speedup:.1f}x")
 
-        if 'unique_patterns' in stats and stats['unique_patterns']:
-            table.add_row("不重复目标内容", f"{len(stats['unique_patterns'])} 个")
-            table.add_row("目标内容列表", ", ".join(sorted(stats['unique_patterns'])))
+        if 'unique_detections' in stats and stats['unique_detections']:
+            table.add_row("不重复目标内容", f"{len(stats['unique_detections'])} 个")
+            table.add_row("目标内容列表", ", ".join(sorted(stats['unique_detections'])))
 
         table.add_row("处理时间", f"{elapsed:.2f} 秒")
         table.add_row("平均速度", f"{avg_fps:.2f} FPS")

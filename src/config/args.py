@@ -96,7 +96,7 @@ def parse_args():
   python main.py input.mp4 output.mp4 --visualize
 
   # 精确定位模式
-  python main.py input.mp4 output.mp4 --precise-phone-location
+  python main.py input.mp4 output.mp4 --precise-location
         """
     )
 

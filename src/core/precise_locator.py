@@ -3,7 +3,7 @@
 通过迭代验证OCR结果，精确定位目标模式在图像中的位置
 """
 import numpy as np
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Callable
 import sys
 from pathlib import Path
 from src.core.bbox_calculator import BboxCalculator
@@ -12,7 +12,13 @@ from src.core.detector_base import BaseDetector
 class PreciseLocator:
     """精确定位器 - 通过迭代验证精确定位目标模式"""
 
-    def __init__(self, ocr_detector, detector: BaseDetector, max_iterations: int = 3):
+    def __init__(
+        self,
+        ocr_detector,
+        detector: BaseDetector,
+        max_iterations: int = 3,
+        progress_callback: Optional[Callable] = None
+    ):
         """
         初始化精确定位器
 
@@ -20,10 +26,12 @@ class PreciseLocator:
             ocr_detector: OCR检测器实例
             detector: 模式检测器实例（如PhoneDetector、IDCardDetector等）
             max_iterations: 最大迭代次数
+            progress_callback: 进度回调接口（用于统计OCR调用）
         """
         self.ocr_detector = ocr_detector
         self.detector = detector
         self.max_iterations = max_iterations
+        self.progress_callback = progress_callback
 
     def refine_pattern_bbox(
         self,
@@ -65,6 +73,18 @@ class PreciseLocator:
         # 取第一个匹配（通常只有一个）
         pattern_text, pattern_start, pattern_end = pattern_positions[0]
 
+        # 【优化】检查原始文本是否只包含目标模式（没有前缀或后缀）
+        # 清理文本后比较
+        import re
+        cleaned_original = re.sub(r'[\s\-\u3000]', '', original_text)
+        cleaned_pattern = re.sub(r'[\s\-\u3000]', '', pattern_text)
+
+        if cleaned_original == cleaned_pattern:
+            # 原始文本就是纯粹的目标模式，不需要精确定位
+            if debug:
+                print(f"  [PreciseLocator] 原始文本已是纯目标模式，无需精确定位: '{original_text}'")
+            return None
+
         if debug:
             print(f"  [PreciseLocator] 原始文本: '{original_text}' (长度: {len(original_text)})")
             print(f"  [PreciseLocator] 目标模式: '{pattern_text}' 位置: [{pattern_start}, {pattern_end})")
@@ -94,6 +114,10 @@ class PreciseLocator:
 
             # 对裁剪区域进行OCR识别
             detections = self.ocr_detector.detect_text(cropped_image)
+
+            # 通知UI OCR调用（精确定位的额外调用）
+            if self.progress_callback and hasattr(self.progress_callback, 'on_ocr_call'):
+                self.progress_callback.on_ocr_call()
 
             if not detections:
                 if debug:

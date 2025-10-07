@@ -69,7 +69,8 @@ class VideoProcessor:
             self.precise_locator = PreciseLocator(
                 self.ocr_detector,
                 self.detector,
-                max_iterations=config.precise_max_iterations
+                max_iterations=config.precise_max_iterations,
+                progress_callback=progress_callback
             )
 
         # 初始化可视化器（如果启用）
@@ -493,6 +494,10 @@ class VideoProcessor:
             detections = self.ocr_detector.detect_text(frame)
             stats['ocr_calls'] += 1
 
+            # 通知UI OCR调用
+            if self.progress_callback:
+                self.progress_callback.on_ocr_call()
+
             # 创建检测标记列表
             detection_mask = []
 
@@ -690,6 +695,10 @@ class VideoProcessor:
 
         # 使用OCR检测文本
         detections = self.ocr_detector.detect_text(frame)
+
+        # 通知UI OCR调用
+        if self.progress_callback:
+            self.progress_callback.on_ocr_call()
 
         processed_frame = frame.copy()
         detection_count = 0

@@ -87,6 +87,12 @@ class ProgressCallback(ABC):
         """
         pass
 
+    def on_ocr_call(self):
+        """
+        OCR调用时调用（用于统计OCR调用次数）
+        """
+        pass  # 默认空实现，子类可选择性重写
+
 
 class ConsoleProgress(ProgressCallback):
     """简单的控制台进度输出（当禁用Rich时使用）"""
@@ -144,8 +150,8 @@ class ConsoleProgress(ProgressCallback):
         print(f"{'='*60}")
         print(f"总帧数: {stats.get('total_frames', 0)}")
         print(f"处理帧数: {stats.get('processed_frames', 0)}")
-        print(f"包含目标: {stats.get('frames_with_patterns', 0)} 帧")
-        print(f"检测总数: {stats.get('total_patterns_detected', 0)} 个")
+        print(f"包含目标: {stats.get('frames_with_detections', 0)} 帧")
+        print(f"检测总数: {stats.get('total_detections', 0)} 个")
         if 'ocr_calls' in stats:
             print(f"OCR调用: {stats['ocr_calls']} 次")
         print(f"处理时间: {elapsed:.2f} 秒")
@@ -157,3 +163,8 @@ class ConsoleProgress(ProgressCallback):
         print(f"\n[错误] {str(error)}")
         import traceback
         traceback.print_exc()
+
+    def on_ocr_call(self):
+        """OCR调用"""
+        # 在这里可以统计OCR调用次数
+        super().on_ocr_call()  # 调用父类的空实现（可选）
