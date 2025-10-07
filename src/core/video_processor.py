@@ -1,6 +1,6 @@
 """
 统一的视频处理模块
-支持逐帧模式和智能采样模式，自动检测并打码视频中的手机号
+支持逐帧模式和智能采样模式，自动检测并打码视频中的目标内容
 """
 import cv2
 import numpy as np
@@ -14,14 +14,14 @@ from src.config.args import ProcessConfig
 from src.ui.progress import ProgressCallback
 from src.ui.visualizer import Visualizer
 from src.core.ocr_detector import OCRDetector
-from src.core.phone_detector import PhoneDetector
+from src.core.detector_factory import DetectorFactory
 from src.core.precise_locator import PreciseLocator
 from src.core.blur import apply_blur
 
 
 @dataclass
-class PhoneRegion:
-    """手机号区域记录（用于智能模式）"""
+class DetectionRegion:
+    """检测区域记录（用于智能模式）"""
     bbox: np.ndarray      # 边界框坐标
     text: str             # 识别的文本
     confidence: float     # 置信度
@@ -55,14 +55,20 @@ class VideoProcessor:
         # 初始化OCR检测器
         self.ocr_detector = OCRDetector(device=config.device)
 
-        # 初始化手机号检测器
-        self.phone_detector = PhoneDetector()
+        # 初始化模式检测器
+        detector_kwargs = getattr(config, 'detector_kwargs', {})
+        self.detector = DetectorFactory.create_detector(
+            config.detector_type,
+            **detector_kwargs
+        )
+        self._log(f"使用检测器: {self.detector.description}")
 
         # 初始化精确定位器（如果启用）
         self.precise_locator = None
-        if config.precise_phone_location:
+        if config.precise_location:
             self.precise_locator = PreciseLocator(
                 self.ocr_detector,
+                self.detector,
                 max_iterations=config.precise_max_iterations
             )
 
@@ -70,7 +76,7 @@ class VideoProcessor:
         self.visualizer = None
         if config.enable_visualize:
             self.visualizer = Visualizer(
-                window_name="Phone Detection - Visual Preview"
+                window_name="Detection - Visual Preview"
             )
             self._log_visualizer_info()
 
@@ -81,7 +87,7 @@ class VideoProcessor:
         self._log("快捷键:")
         self._log("  Q/ESC - 退出")
         self._log("  P     - 暂停/继续")
-        self._log("  T     - 切换标签显示 (仅手机号 -> 全部显示 -> 隐藏)")
+        self._log("  T     - 切换标签显示 (仅目标 -> 全部显示 -> 隐藏)")
         self._log("")
 
     def _log(self, message: str, level: str = 'info'):
@@ -120,6 +126,11 @@ class VideoProcessor:
         """
         self._log("\n使用 FFmpeg 进行 H.264 编码...", 'info')
 
+        # 通知开始压缩（进度0%）
+        if self.progress_callback:
+            self.progress_callback.on_phase_change("compression", 3, 3)
+            self.progress_callback.on_progress(0, 100, phase='compress')
+
         try:
             subprocess.run(
                 [
@@ -142,6 +153,10 @@ class VideoProcessor:
             Path(temp_path).unlink()
             self._log("  ✓ H.264 编码完成", 'success')
 
+            # 通知压缩完成（进度100%）
+            if self.progress_callback:
+                self.progress_callback.on_progress(100, 100, phase='compress')
+
         except subprocess.CalledProcessError as e:
             self._log(f"  ✗ FFmpeg 编码失败: {e.stderr}", 'error')
             self._log("  保留临时文件作为输出", 'warning')
@@ -154,7 +169,7 @@ class VideoProcessor:
         output_path: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        处理视频文件，对所有手机号进行脱敏
+        处理视频文件，对所有目标内容进行脱敏
 
         Args:
             input_path: 输入视频路径（如果为None，使用config中的路径）
@@ -265,12 +280,12 @@ class VideoProcessor:
             saved_calls = stats['total_frames'] - stats['ocr_calls']
             self._log(f"  OCR 调用次数: {stats['ocr_calls']} (节省 {saved_calls} 次)")
 
-        self._log(f"  包含手机号的帧数: {stats.get('frames_with_phones', 0)}")
-        self._log(f"  检测到的手机号总数: {stats.get('total_phones_detected', 0)}")
+        self._log(f"  包含目标的帧数: {stats.get('frames_with_detections', 0)}")
+        self._log(f"  检测到的目标总数: {stats.get('total_detections', 0)}")
 
-        if 'unique_phones' in stats:
-            unique_count = len(stats['unique_phones'])
-            self._log(f"  不重复手机号: {unique_count} 个")
+        if 'unique_detections' in stats:
+            unique_count = len(stats['unique_detections'])
+            self._log(f"  不重复目标: {unique_count} 个")
 
         self._log(f"  输出文件: {stats.get('output_path', '')}")
 
@@ -296,7 +311,7 @@ class VideoProcessor:
         self._log("\n开始逐帧处理视频...")
         self._log(f"处理模式: 逐帧 (每帧都进行OCR检测)")
 
-        if self.config.precise_phone_location:
+        if self.config.precise_location:
             self._log(f"精确定位: 已启用 (最大迭代次数: {self.config.precise_max_iterations})")
         else:
             self._log(f"精确定位: 未启用")
@@ -305,8 +320,8 @@ class VideoProcessor:
         stats = {
             'total_frames': total_frames,
             'processed_frames': 0,
-            'frames_with_phones': 0,
-            'total_phones_detected': 0
+            'frames_with_detections': 0,
+            'total_detections': 0
         }
 
         frame_idx = 0
@@ -330,7 +345,7 @@ class VideoProcessor:
                     last_fps_update = current_time
 
                 # 处理当前帧
-                processed_frame, phone_count = self._process_single_frame(
+                processed_frame, detection_count = self._process_single_frame(
                     frame,
                     frame_idx,
                     total_frames,
@@ -342,9 +357,9 @@ class VideoProcessor:
 
                 # 更新统计
                 stats['processed_frames'] += 1
-                if phone_count > 0:
-                    stats['frames_with_phones'] += 1
-                    stats['total_phones_detected'] += phone_count
+                if detection_count > 0:
+                    stats['frames_with_detections'] += 1
+                    stats['total_detections'] += detection_count
 
                 # 进度回调
                 if self.progress_callback:
@@ -394,7 +409,7 @@ class VideoProcessor:
         self._log(f"  预计 OCR 次数: {total_frames // sample_frame_interval + 1} 次")
         self._log(f"  理论加速比: {sample_frame_interval}x")
 
-        if self.config.precise_phone_location:
+        if self.config.precise_location:
             self._log(f"  精确定位: 已启用 (最大迭代次数: {self.config.precise_max_iterations})")
         else:
             self._log(f"  精确定位: 未启用")
@@ -404,40 +419,40 @@ class VideoProcessor:
             'total_frames': total_frames,
             'processed_frames': 0,
             'ocr_calls': 0,
-            'frames_with_phones': 0,
-            'total_phones_detected': 0,
-            'unique_phones': set()
+            'frames_with_detections': 0,
+            'total_detections': 0,
+            'unique_detections': set()
         }
 
         try:
             # 阶段1: 识别阶段 - 记录所有需要打码的区域
-            self._log("\n[阶段 1/2] 识别手机号区域...")
+            self._log("\n[阶段 1/2] 识别目标区域...")
             if self.progress_callback:
-                self.progress_callback.on_phase_change("识别手机号区域", 1, 2)
+                self.progress_callback.on_phase_change("detection", 1, 2)
 
-            phone_regions = self._sampling_phase(
+            detection_regions = self._sampling_phase(
                 cap, fps, total_frames, sample_frame_interval,
                 buffer_frames, stats
             )
 
             self._log(f"\n识别完成: 共 {stats['ocr_calls']} 次 OCR 调用, "
-                     f"发现 {len(phone_regions)} 个手机号区域", 'success')
+                     f"发现 {len(detection_regions)} 个检测区域", 'success')
 
             # 阶段2: 打码阶段 - 逐帧处理并应用打码
             self._log("\n[阶段 2/2] 应用打码效果...")
             if self.progress_callback:
-                self.progress_callback.on_phase_change("应用打码效果", 2, 2)
+                self.progress_callback.on_phase_change("masking", 2, 2)
 
             self._blurring_phase(
-                cap, out, fps, total_frames, phone_regions, stats
+                cap, out, fps, total_frames, detection_regions, stats
             )
 
         except KeyboardInterrupt:
             self._log("\n用户中断处理", 'warning')
             raise
 
-        # 转换unique_phones为列表
-        stats['unique_phones'] = list(stats['unique_phones'])
+        # 转换unique_detections为列表
+        stats['unique_detections'] = list(stats['unique_detections'])
 
         return stats
 
@@ -449,7 +464,7 @@ class VideoProcessor:
         sample_frame_interval: int,
         buffer_frames: int,
         stats: Dict[str, Any]
-    ) -> List[PhoneRegion]:
+    ) -> List[DetectionRegion]:
         """
         采样识别阶段
 
@@ -462,9 +477,9 @@ class VideoProcessor:
             stats: 统计信息字典
 
         Returns:
-            手机号区域列表
+            检测区域列表
         """
-        phone_regions: List[PhoneRegion] = []
+        detection_regions: List[DetectionRegion] = []
         frame_idx = 0
 
         while frame_idx < total_frames:
@@ -478,21 +493,21 @@ class VideoProcessor:
             detections = self.ocr_detector.detect_text(frame)
             stats['ocr_calls'] += 1
 
-            # 创建手机号标记列表
-            phone_mask = []
+            # 创建检测标记列表
+            detection_mask = []
 
-            # 查找手机号
+            # 查找目标模式
             for bbox, text, confidence in detections:
-                is_phone = self.phone_detector.contains_phone(text, strict=True)
-                phone_mask.append(is_phone)
+                is_pattern = self.detector.contains_pattern(text, strict=True)
+                detection_mask.append(is_pattern)
 
-                if is_phone:
+                if is_pattern:
                     # 确定打码区域
                     blur_bbox = bbox  # 默认使用原始bbox
 
-                    # 如果启用精确定位，尝试精确定位手机号
+                    # 如果启用精确定位，尝试精确定位目标模式
                     if self.precise_locator:
-                        result = self.precise_locator.refine_phone_bbox(
+                        result = self.precise_locator.refine_pattern_bbox(
                             frame, bbox, text, debug=False
                         )
                         if result is not None:
@@ -505,24 +520,24 @@ class VideoProcessor:
                     start_frame = max(0, frame_idx - buffer_frames)
                     end_frame = min(total_frames - 1, frame_idx + buffer_frames)
 
-                    region = PhoneRegion(
+                    region = DetectionRegion(
                         bbox=blur_bbox,
                         text=text,
                         confidence=confidence,
                         start_frame=start_frame,
                         end_frame=end_frame
                     )
-                    phone_regions.append(region)
+                    detection_regions.append(region)
 
-                    stats['unique_phones'].add(text)
+                    stats['unique_detections'].add(text)
 
-                    # 通知检测到手机号
+                    # 通知检测到目标
                     if self.progress_callback:
-                        self.progress_callback.on_phone_detected(
+                        self.progress_callback.on_detected(
                             frame_idx, text, confidence
                         )
                     else:
-                        self._log(f"  [帧 {frame_idx}] 检测到手机号: {text} "
+                        self._log(f"  [帧 {frame_idx}] 检测到目标: {text} "
                                  f"(置信度: {confidence:.2f}, 打码范围: {start_frame}-{end_frame})")
 
             # 可视化
@@ -532,7 +547,7 @@ class VideoProcessor:
                     frame_idx=frame_idx,
                     total_frames=total_frames,
                     detections=detections,
-                    phone_mask=phone_mask,
+                    detection_mask=detection_mask,
                     wait_key=1
                 )
                 if not should_continue:
@@ -552,9 +567,9 @@ class VideoProcessor:
             elif stats['ocr_calls'] % 5 == 0:
                 progress = (frame_idx / total_frames) * 100
                 self._log(f"  识别进度: {min(frame_idx, total_frames)}/{total_frames} "
-                         f"({progress:.1f}%) - 已识别 {len(phone_regions)} 个区域")
+                         f"({progress:.1f}%) - 已识别 {len(detection_regions)} 个区域")
 
-        return phone_regions
+        return detection_regions
 
     def _blurring_phase(
         self,
@@ -562,7 +577,7 @@ class VideoProcessor:
         out: cv2.VideoWriter,
         fps: int,
         total_frames: int,
-        phone_regions: List[PhoneRegion],
+        detection_regions: List[DetectionRegion],
         stats: Dict[str, Any]
     ):
         """
@@ -573,7 +588,7 @@ class VideoProcessor:
             out: 视频写入器
             fps: 视频帧率
             total_frames: 总帧数
-            phone_regions: 手机号区域列表
+            detection_regions: 检测区域列表
             stats: 统计信息字典
         """
         # 重置到开头
@@ -597,11 +612,11 @@ class VideoProcessor:
                 last_fps_update = current_time
 
             processed_frame = frame.copy()
-            current_frame_phones = 0
+            current_frame_detections = 0
 
             # 收集当前帧需要打码的区域
             current_regions = []
-            for region in phone_regions:
+            for region in detection_regions:
                 if region.start_frame <= frame_idx <= region.end_frame:
                     current_regions.append(region)
                     processed_frame = apply_blur(
@@ -610,19 +625,19 @@ class VideoProcessor:
                         method=self.config.blur_method,
                         strength=self.config.blur_strength
                     )
-                    current_frame_phones += 1
+                    current_frame_detections += 1
 
             # 可视化
             if self.visualizer:
                 detections = [(r.bbox, r.text, r.confidence) for r in current_regions]
-                phone_mask = [True] * len(detections)
+                detection_mask = [True] * len(detections)
 
                 should_continue = self.visualizer.show_frame(
                     frame=frame,
                     frame_idx=frame_idx,
                     total_frames=total_frames,
                     detections=detections,
-                    phone_mask=phone_mask,
+                    detection_mask=detection_mask,
                     fps=current_fps,
                     wait_key=1
                 )
@@ -634,9 +649,9 @@ class VideoProcessor:
             out.write(processed_frame)
 
             stats['processed_frames'] += 1
-            if current_frame_phones > 0:
-                stats['frames_with_phones'] += 1
-                stats['total_phones_detected'] += current_frame_phones
+            if current_frame_detections > 0:
+                stats['frames_with_detections'] += 1
+                stats['total_detections'] += current_frame_detections
 
             frame_idx += 1
 
@@ -659,7 +674,7 @@ class VideoProcessor:
         current_fps: float
     ) -> Tuple[np.ndarray, int]:
         """
-        处理单帧图像，检测并打码手机号
+        处理单帧图像，检测并打码目标内容
 
         Args:
             frame: 输入帧
@@ -668,7 +683,7 @@ class VideoProcessor:
             current_fps: 当前处理帧率
 
         Returns:
-            (处理后的帧, 检测到的手机号数量)
+            (处理后的帧, 检测到的目标数量)
         """
         if frame is None or frame.size == 0:
             return frame, 0
@@ -677,22 +692,22 @@ class VideoProcessor:
         detections = self.ocr_detector.detect_text(frame)
 
         processed_frame = frame.copy()
-        phone_count = 0
-        phone_mask = []  # 标记哪些检测是手机号
+        detection_count = 0
+        detection_mask = []  # 标记哪些检测是目标
 
         # 遍历所有检测到的文本
         for bbox, text, confidence in detections:
-            # 检查是否包含手机号
-            is_phone = self.phone_detector.contains_phone(text)
-            phone_mask.append(is_phone)
+            # 检查是否包含目标模式
+            is_pattern = self.detector.contains_pattern(text)
+            detection_mask.append(is_pattern)
 
-            if is_phone:
+            if is_pattern:
                 # 确定打码区域
                 blur_bbox = bbox  # 默认使用原始bbox
 
-                # 如果启用精确定位，尝试精确定位手机号
+                # 如果启用精确定位，尝试精确定位目标模式
                 if self.precise_locator:
-                    result = self.precise_locator.refine_phone_bbox(
+                    result = self.precise_locator.refine_pattern_bbox(
                         frame, bbox, text, debug=False
                     )
                     if result is not None:
@@ -706,11 +721,11 @@ class VideoProcessor:
                     method=self.config.blur_method,
                     strength=self.config.blur_strength
                 )
-                phone_count += 1
+                detection_count += 1
 
-                # 通知检测到手机号
+                # 通知检测到目标
                 if self.progress_callback:
-                    self.progress_callback.on_phone_detected(
+                    self.progress_callback.on_detected(
                         frame_idx, text, confidence
                     )
 
@@ -721,14 +736,14 @@ class VideoProcessor:
                 frame_idx=frame_idx,
                 total_frames=total_frames,
                 detections=detections,
-                phone_mask=phone_mask,
+                detection_mask=detection_mask,
                 fps=current_fps,
                 wait_key=1
             )
             if not should_continue:
                 raise KeyboardInterrupt("用户请求退出")
 
-        return processed_frame, phone_count
+        return processed_frame, detection_count
 
 
 if __name__ == '__main__':

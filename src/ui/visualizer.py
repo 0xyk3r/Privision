@@ -10,14 +10,14 @@ from pathlib import Path
 
 
 class Visualizer:
-    """可视化工具 - 用于显示检测到的手机号和处理帧"""
+    """可视化工具 - 用于显示检测结果和处理帧"""
 
     # 标签显示模式
     LABEL_NONE = 0      # 不显示标签
-    LABEL_PHONE = 1     # 只显示手机号标签
+    LABEL_TARGET = 1    # 只显示目标标签
     LABEL_ALL = 2       # 显示所有标签
 
-    def __init__(self, window_name: str = "Phone Detection - Visual Preview"):
+    def __init__(self, window_name: str = "Detection - Visual Preview"):
         """
         初始化可视化器
 
@@ -29,7 +29,7 @@ class Visualizer:
         self.font = cv2.FONT_HERSHEY_SIMPLEX
         self.font_scale = 0.6
         self.font_thickness = 2
-        self.label_mode = self.LABEL_PHONE  # 默认只显示手机号标签
+        self.label_mode = self.LABEL_TARGET  # 默认只显示目标标签
 
         # 尝试加载中文字体
         self.pil_font = self._load_chinese_font()
@@ -83,7 +83,7 @@ class Visualizer:
         self,
         frame: np.ndarray,
         detections: List[Tuple[np.ndarray, str, float]],
-        phone_mask: Optional[List[bool]] = None
+        detection_mask: Optional[List[bool]] = None
     ) -> np.ndarray:
         """
         在帧上绘制检测结果
@@ -91,7 +91,7 @@ class Visualizer:
         Args:
             frame: 原始帧
             detections: OCR检测结果列表 [(bbox, text, confidence), ...]
-            phone_mask: 布尔列表，标记哪些检测是手机号
+            detection_mask: 布尔列表，标记哪些检测是目标
 
         Returns:
             绘制了标注的帧
@@ -100,9 +100,9 @@ class Visualizer:
 
         # 步骤1：先在OpenCV上绘制所有边界框
         for idx, (bbox, text, confidence) in enumerate(detections):
-            is_phone = phone_mask[idx] if phone_mask and idx < len(phone_mask) else False
-            color_bgr = (0, 0, 255) if is_phone else (0, 255, 0)
-            thickness = 3 if is_phone else 1
+            is_target = detection_mask[idx] if detection_mask and idx < len(detection_mask) else False
+            color_bgr = (0, 0, 255) if is_target else (0, 255, 0)
+            thickness = 3 if is_target else 1
 
             # 绘制边界框
             pts = bbox.astype(np.int32).reshape((-1, 1, 2))
@@ -114,22 +114,22 @@ class Visualizer:
             draw = ImageDraw.Draw(pil_image)
 
             for idx, (bbox, text, confidence) in enumerate(detections):
-                is_phone = phone_mask[idx] if phone_mask and idx < len(phone_mask) else False
+                is_target = detection_mask[idx] if detection_mask and idx < len(detection_mask) else False
 
-                # 只显示手机号模式：跳过非手机号
-                if self.label_mode == self.LABEL_PHONE and not is_phone:
+                # 只显示目标模式：跳过非目标
+                if self.label_mode == self.LABEL_TARGET and not is_target:
                     continue
 
                 # 设置颜色
-                color_rgb = (255, 0, 0) if is_phone else (0, 255, 0)
+                color_rgb = (255, 0, 0) if is_target else (0, 255, 0)
 
                 # 绘制文本标签（使用PIL支持中文）
                 x_min = int(np.min(bbox[:, 0]))
                 y_min = int(np.min(bbox[:, 1]))
 
                 # 构建标签文本
-                if is_phone:
-                    label = f"[手机号] {text} ({confidence:.2f})"
+                if is_target:
+                    label = f"[目标] {text} ({confidence:.2f})"
                 else:
                     label = f"{text} ({confidence:.2f})"
 
@@ -167,7 +167,7 @@ class Visualizer:
         frame: np.ndarray,
         frame_idx: int,
         total_frames: int,
-        phone_count: int,
+        detection_count: int,
         fps: Optional[float] = None
     ) -> np.ndarray:
         """
@@ -177,7 +177,7 @@ class Visualizer:
             frame: 输入帧
             frame_idx: 当前帧索引
             total_frames: 总帧数
-            phone_count: 检测到的手机号数量
+            detection_count: 检测到的目标数量
             fps: 处理帧率
 
         Returns:
@@ -206,13 +206,13 @@ class Visualizer:
         # 标签模式提示
         label_mode_text = {
             self.LABEL_NONE: "隐藏",
-            self.LABEL_PHONE: "仅手机号",
+            self.LABEL_TARGET: "仅目标",
             self.LABEL_ALL: "全部显示"
         }[self.label_mode]
 
         info_lines = [
             f"帧: {frame_idx}/{total_frames} ({progress:.1f}%)",
-            f"检测到的手机号: {phone_count}",
+            f"检测到的目标: {detection_count}",
         ]
 
         if fps is not None:
@@ -243,7 +243,7 @@ class Visualizer:
         frame_idx: int,
         total_frames: int,
         detections: List[Tuple[np.ndarray, str, float]],
-        phone_mask: Optional[List[bool]] = None,
+        detection_mask: Optional[List[bool]] = None,
         fps: Optional[float] = None,
         wait_key: int = 1
     ) -> bool:
@@ -255,7 +255,7 @@ class Visualizer:
             frame_idx: 当前帧索引
             total_frames: 总帧数
             detections: OCR检测结果
-            phone_mask: 手机号标记
+            detection_mask: 目标标记
             fps: 处理帧率
             wait_key: 等待按键的毫秒数
 
@@ -265,12 +265,12 @@ class Visualizer:
         self.create_window()
 
         # 绘制检测结果
-        display_frame = self.draw_detections(frame, detections, phone_mask)
+        display_frame = self.draw_detections(frame, detections, detection_mask)
 
         # 添加信息面板（在画面下方，不覆盖）
-        phone_count = sum(phone_mask) if phone_mask else 0
+        detection_count = sum(detection_mask) if detection_mask else 0
         display_frame = self.add_info_panel(
-            display_frame, frame_idx, total_frames, phone_count, fps
+            display_frame, frame_idx, total_frames, detection_count, fps
         )
 
         # 显示帧
@@ -291,15 +291,15 @@ class Visualizer:
 
     def _toggle_label_mode(self):
         """切换标签显示模式"""
-        if self.label_mode == self.LABEL_PHONE:
+        if self.label_mode == self.LABEL_TARGET:
             self.label_mode = self.LABEL_ALL
             mode_name = "全部显示"
         elif self.label_mode == self.LABEL_ALL:
             self.label_mode = self.LABEL_NONE
             mode_name = "隐藏"
         else:
-            self.label_mode = self.LABEL_PHONE
-            mode_name = "仅手机号"
+            self.label_mode = self.LABEL_TARGET
+            mode_name = "仅目标"
 
         print(f"[可视化] 标签模式切换为: {mode_name}")
 

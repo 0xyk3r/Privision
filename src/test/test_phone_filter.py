@@ -3,7 +3,7 @@
 测试手机号过滤功能
 验证智能过滤算法是否能正确识别和过滤
 """
-from src.core.phone_detector import PhoneDetector
+from src.core.detectors.phone_detector import PhoneDetector
 
 print("=" * 80)
 print("手机号智能过滤测试")

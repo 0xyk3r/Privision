@@ -81,7 +81,7 @@ def process_videos_in_directory(
             stats = processor.process_video(str(video_file), str(output_file))
 
             print(f"✓ 完成: {output_file.name}")
-            print(f"  检测到手机号: {stats['total_phones_detected']} 个")
+            print(f"  检测到目标内容: {stats['total_patterns_detected']} 个")
 
         except Exception as e:
             print(f"✗ 处理失败: {e}")

@@ -29,22 +29,31 @@ class Task:
     input_path: str
     output_path: str
     status: TaskStatus
-    progress: float  # 0-100
+    progress: float  # 0-100 总体进度
     message: str
     created_at: str
     started_at: Optional[str] = None
     completed_at: Optional[str] = None
     error: Optional[str] = None
     result: Optional[Dict] = None
+    current_step: Optional[str] = None  # 当前步骤: detection/masking/compression
+    current_step_progress: float = 0.0  # 当前步骤进度 0-100
 
     # 处理配置
+    detector_type: str = 'phone'
+    detector_kwargs: Dict = None
     blur_method: str = 'gaussian'
     blur_strength: int = 51
     device: str = 'cpu'  # cpu, gpu:0, gpu:1, etc.
     sample_interval: float = 1.0
     buffer_time: Optional[float] = None
-    precise_phone_location: bool = False
+    precise_location: bool = False
     precise_max_iterations: int = 3
+
+    def __post_init__(self):
+        """初始化后处理"""
+        if self.detector_kwargs is None:
+            self.detector_kwargs = {}
 
     def to_dict(self) -> Dict:
         """转换为字典"""
@@ -234,10 +243,18 @@ class TaskQueue:
 
             # 创建进度回调类
             class APIProgressCallback(ProgressCallback):
+                # 步骤权重：detection(识别)80%、masking(打码)15%、compression(压缩)5%
+                STEP_WEIGHTS = {
+                    'detection': 0.80,
+                    'masking': 0.15,
+                    'compression': 0.05
+                }
+
                 def __init__(self, task, tasks_lock, save_func):
                     self.task = task
                     self.tasks_lock = tasks_lock
                     self.save_func = save_func
+                    self.current_step_name = None
 
                 def on_start(self, total_frames, fps, width, height):
                     with self.tasks_lock:
@@ -245,20 +262,68 @@ class TaskQueue:
                     self.save_func()
 
                 def on_progress(self, current_frame, total_frames, phase='processing'):
-                    progress = (current_frame / total_frames) * 100
+                    # 计算当前步骤进度 (0-100)
+                    step_progress = (current_frame / total_frames) * 100 if total_frames > 0 else 0
+
+                    # 根据阶段映射到步骤名称
+                    if phase == 'sampling':
+                        step_name = 'detection'
+                    elif phase == 'blurring':
+                        step_name = 'masking'
+                    elif phase == 'compress':
+                        step_name = 'compression'
+                    else:
+                        step_name = 'detection'  # 默认为识别
+
+                    # 计算总进度
+                    total_progress = self._calculate_total_progress(step_name, step_progress)
+
                     with self.tasks_lock:
-                        self.task.progress = progress
-                        self.task.message = f"{phase}: {current_frame}/{total_frames}"
+                        self.task.current_step = step_name
+                        self.task.current_step_progress = step_progress
+                        self.task.progress = total_progress
+                        if step_name == 'compression':
+                            self.task.message = f"{step_name}: {step_progress:.0f}%"
+                        else:
+                            self.task.message = f"{step_name}: {current_frame}/{total_frames}"
                     self.save_func()
 
-                def on_phone_detected(self, frame_idx, text, confidence):
+                def _calculate_total_progress(self, step_name, step_progress):
+                    """计算总进度"""
+                    # 已完成步骤的累计权重
+                    completed_weight = 0.0
+                    if step_name == 'masking':
+                        completed_weight = self.STEP_WEIGHTS['detection']
+                    elif step_name == 'compression':
+                        completed_weight = self.STEP_WEIGHTS['detection'] + self.STEP_WEIGHTS['masking']
+
+                    # 当前步骤的权重贡献
+                    current_weight = self.STEP_WEIGHTS.get(step_name, 0) * (step_progress / 100.0)
+
+                    # 总进度 = 已完成权重 + 当前步骤权重贡献
+                    return (completed_weight + current_weight) * 100
+
+                def on_detected(self, frame_idx, text, confidence):
                     pass  # API模式不需要详细日志
 
                 def on_log(self, message, level='info'):
                     pass  # API模式不需要详细日志
 
                 def on_phase_change(self, phase, phase_num, total_phases):
+                    # 根据阶段名称映射到步骤名称
+                    if 'detection' in phase:
+                        step_name = 'detection'
+                    elif 'masking' in phase:
+                        step_name = 'masking'
+                    elif 'compression' in phase:
+                        step_name = 'compression'
+                    else:
+                        step_name = phase
+
+                    self.current_step_name = step_name
                     with self.tasks_lock:
+                        self.task.current_step = step_name
+                        self.task.current_step_progress = 0.0
                         self.task.message = f"阶段 {phase_num}/{total_phases}: {phase}"
                     self.save_func()
 
@@ -272,13 +337,15 @@ class TaskQueue:
             config = ProcessConfig(
                 input_path=task.input_path,
                 output_path=task.output_path,
+                detector_type=task.detector_type,
+                detector_kwargs=task.detector_kwargs,
                 mode='smart',  # API模式默认使用智能采样
                 blur_method=task.blur_method,
                 blur_strength=task.blur_strength,
                 device='gpu:0' if task.device.startswith('gpu') else 'cpu',
                 sample_interval=task.sample_interval,
                 buffer_time=task.buffer_time,
-                precise_phone_location=task.precise_phone_location,
+                precise_location=task.precise_location,
                 precise_max_iterations=task.precise_max_iterations,
                 enable_rich=False,
                 enable_visualize=False
@@ -316,12 +383,14 @@ class TaskQueue:
         self,
         input_path: str,
         output_path: str,
+        detector_type: str = 'phone',
+        detector_kwargs: Optional[Dict] = None,
         blur_method: str = 'gaussian',
         blur_strength: int = 51,
         device: str = 'cpu',
         sample_interval: float = 1.0,
         buffer_time: Optional[float] = None,
-        precise_phone_location: bool = False,
+        precise_location: bool = False,
         precise_max_iterations: int = 3
     ) -> str:
         """
@@ -330,12 +399,14 @@ class TaskQueue:
         Args:
             input_path: 输入视频路径
             output_path: 输出视频路径
+            detector_type: 检测器类型
+            detector_kwargs: 检测器参数
             blur_method: 打码方式
             blur_strength: 模糊强度
             device: 设备类型（cpu, gpu:0, gpu:1, etc.）
             sample_interval: 采样间隔
             buffer_time: 缓冲时间
-            precise_phone_location: 是否启用精确定位
+            precise_location: 是否启用精确定位
             precise_max_iterations: 精确定位的最大迭代次数
 
         Returns:
@@ -351,12 +422,14 @@ class TaskQueue:
             progress=0,
             message="任务已创建，等待处理",
             created_at=datetime.now().isoformat(),
+            detector_type=detector_type,
+            detector_kwargs=detector_kwargs or {},
             blur_method=blur_method,
             blur_strength=blur_strength,
             device=device,
             sample_interval=sample_interval,
             buffer_time=buffer_time,
-            precise_phone_location=precise_phone_location,
+            precise_location=precise_location,
             precise_max_iterations=precise_max_iterations
         )
 

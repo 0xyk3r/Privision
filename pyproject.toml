@@ -3,23 +3,28 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "videophone-mask"
+name = "privision"
 version = "1.0.0"
-description = "视频手机号脱敏工具 - 基于PaddleOCR的手机号识别与打码系统"
-authors = [{name = "0xyk3r"}]
+description = "视频内容脱敏工具 - 基于OCR的信息识别与打码系统"
+authors = [{ name = "0xyk3r" }]
 readme = "README.md"
-license = {text = "MIT"}
+license = { text = "MIT" }
 requires-python = ">=3.8"
-keywords = ["video", "ocr", "phone-number", "mask", "blur", "privacy"]
+keywords = ["privision", "video", "ocr", "phone-number", "mask", "blur", "privacy"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Other Audience",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
 dependencies = [
@@ -43,14 +48,14 @@ dev = [
 ]
 
 [project.scripts]
-videophone-mask = "src.main:main"
-videophone-server = "src.server:start_server"
-videophone-batch = "src.batch:main"
+privision = "src.main:main"
+privision-server = "src.server:start_server"
+privision-batch = "src.batch:main"
 
 [project.urls]
-Homepage = "https://github.com/0xyk3r/VideoPhoneMask"
-Repository = "https://github.com/0xyk3r/VideoPhoneMask"
-Issues = "https://github.com/0xyk3r/VideoPhoneMask/issues"
+Homepage = "https://github.com/0xyk3r/Privision"
+Repository = "https://github.com/0xyk3r/Privision"
+Issues = "https://github.com/0xyk3r/Privision/issues"
 
 [tool.setuptools]
 packages = ["src", "src.api", "src.config", "src.core", "src.ui", "src.test"]

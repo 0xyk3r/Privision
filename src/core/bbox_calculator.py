@@ -183,30 +183,30 @@ if __name__ == '__main__':
 
     print(f"原始bbox: {original_bbox.tolist()}\n")
 
-    # 查找手机号位置
-    phone_start = full_text.find("13812345678")
-    phone_end = phone_start + 11
-    print(f"手机号位置: 索引 [{phone_start}, {phone_end})")
-    print(f"手机号: '{full_text[phone_start:phone_end]}'")
-    print(f"字符占比: {phone_start}/{len(full_text)} 到 {phone_end}/{len(full_text)}\n")
+    # 查找目标位置
+    pattern_start = full_text.find("13812345678")
+    pattern_end = pattern_start + 11
+    print(f"目标位置: 索引 [{pattern_start}, {pattern_end})")
+    print(f"目标号: '{full_text[pattern_start:pattern_end]}'")
+    print(f"目标占比: {pattern_start}/{len(full_text)} 到 {pattern_end}/{len(full_text)}\n")
 
-    # 计算手机号的bbox
-    phone_bbox = BboxCalculator.calculate_substring_bbox(
+    # 计算目标的bbox
+    pattern_bbox = BboxCalculator.calculate_substring_bbox(
         original_bbox,
         full_text,
-        phone_start,
-        phone_end,
+        pattern_start,
+        pattern_end,
         padding_ratio=0.05
     )
 
-    print(f"计算得到的手机号bbox: {phone_bbox.tolist()}")
-    print(f"X 范围: {phone_bbox[0][0]} - {phone_bbox[1][0]}")
-    print(f"Y 范围: {phone_bbox[0][1]} - {phone_bbox[2][1]}\n")
+    print(f"计算得到的目标bbox: {pattern_bbox.tolist()}")
+    print(f"X 范围: {pattern_bbox[0][0]} - {pattern_bbox[1][0]}")
+    print(f"Y 范围: {pattern_bbox[0][1]} - {pattern_bbox[2][1]}\n")
 
     # 测试边界调整
     print("=== 测试边界调整 ===")
     adjusted_bbox = BboxCalculator.adjust_bbox_horizontally(
-        phone_bbox,
+        pattern_bbox,
         left_shift_ratio=0.1,   # 左边界向右移动10%
         right_shift_ratio=-0.05  # 右边界向左移动5%
     )

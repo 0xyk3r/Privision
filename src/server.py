@@ -1,5 +1,5 @@
 """
-FastAPI 服务器 - 视频手机号脱敏 API
+FastAPI 服务器 - 视频内容脱敏 API
 提供上传视频、查询进度、下载结果的REST API接口
 """
 import shutil
@@ -59,8 +59,8 @@ def init_directories(data_dir: str = None):
 
 # 创建 FastAPI 应用
 app = FastAPI(
-    title="视频手机号脱敏 API",
-    description="提供视频中手机号自动识别与脱敏服务",
+    title="视频内容脱敏 API",
+    description="提供视频中目标内容自动识别与脱敏服务",
     version="1.0.0"
 )
 
@@ -89,13 +89,15 @@ class TaskStatusResponse(BaseModel):
     """任务状态响应"""
     task_id: str = Field(..., description="任务ID")
     status: str = Field(..., description="任务状态: pending/processing/completed/failed")
-    progress: float = Field(..., description="任务进度 0-100")
+    progress: float = Field(..., description="任务总体进度 0-100")
     message: str = Field(..., description="状态消息")
     created_at: str = Field(..., description="创建时间")
     started_at: Optional[str] = Field(None, description="开始处理时间")
     completed_at: Optional[str] = Field(None, description="完成时间")
     error: Optional[str] = Field(None, description="错误信息（仅失败时）")
     result: Optional[dict] = Field(None, description="处理结果统计（仅成功时）")
+    current_step: Optional[str] = Field(None, description="当前步骤: detection/masking/compression")
+    current_step_progress: float = Field(0.0, description="当前步骤进度 0-100")
 
 
 class TaskListResponse(BaseModel):
@@ -110,7 +112,7 @@ class TaskListResponse(BaseModel):
 async def root():
     """API根路径"""
     return {
-        "name": "视频手机号脱敏 API",
+        "name": "视频目标内容脱敏 API",
         "version": "1.0.0",
         "status": "running",
         "docs": "/docs"
@@ -129,24 +131,30 @@ async def health():
 @app.post("/api/tasks", response_model=TaskCreateResponse, tags=["任务管理"])
 async def create_task(
     file: UploadFile = File(..., description="要处理的视频文件"),
+    detector_type: str = Form("phone", description="检测器类型: phone/keyword/idcard"),
+    keywords: Optional[str] = Form(None, description="关键字列表（逗号分隔，仅keyword检测器）"),
+    case_sensitive: bool = Form(False, description="关键字是否区分大小写"),
     blur_method: str = Form("gaussian", description="打码方式: gaussian/pixelate/black"),
     blur_strength: int = Form(51, description="模糊强度（仅高斯模糊）"),
     device: str = Form("cpu", description="计算设备: cpu, gpu:0, gpu:1, etc."),
     sample_interval: float = Form(1.0, description="采样间隔（秒）"),
     buffer_time: Optional[float] = Form(None, description="缓冲时间（秒）"),
-    precise_phone_location: bool = Form(False, description="是否启用精确定位（避免打码其他文字）"),
+    precise_location: bool = Form(False, description="是否启用精确定位（避免打码其他文字）"),
     precise_max_iterations: int = Form(3, description="精确定位的最大迭代次数")
 ):
     """
     上传视频并创建处理任务
 
     - **file**: 视频文件（支持mp4等格式）
+    - **detector_type**: 检测器类型，可选 phone（手机号）、keyword（关键字）、idcard（身份证号）
+    - **keywords**: 关键字列表（逗号分隔，仅当detector_type=keyword时有效）
+    - **case_sensitive**: 关键字是否区分大小写
     - **blur_method**: 打码方式，可选 gaussian（高斯模糊）、pixelate（像素化）、black（黑色遮挡）
     - **blur_strength**: 模糊强度，仅对高斯模糊有效，必须为奇数
     - **device**: 计算设备，格式为 'cpu' 或 'gpu:0', 'gpu:1' 等
     - **sample_interval**: 采样间隔（秒），建议0.5-2.0
     - **buffer_time**: 缓冲时间（秒），默认等于sample_interval
-    - **precise_phone_location**: 是否启用精确定位（通过迭代验证精确定位手机号，避免打码其他文字，会增加处理时间）
+    - **precise_location**: 是否启用精确定位（通过迭代验证精确定位目标，避免打码其他文字，会增加处理时间）
     - **precise_max_iterations**: 精确定位的最大迭代次数（默认3次）
 
     返回任务ID，用于后续查询进度和下载结果
@@ -166,6 +174,9 @@ async def create_task(
             )
 
         # 验证参数
+        if detector_type not in ['phone', 'keyword', 'idcard']:
+            raise HTTPException(status_code=400, detail=f"不支持的检测器类型: {detector_type}")
+
         if blur_method not in ['gaussian', 'pixelate', 'black']:
             raise HTTPException(status_code=400, detail=f"不支持的打码方式: {blur_method}")
 
@@ -194,17 +205,26 @@ async def create_task(
         with open(input_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
+        # 准备检测器参数
+        detector_kwargs = {}
+        if detector_type == 'keyword':
+            if keywords:
+                detector_kwargs['keywords'] = [k.strip() for k in keywords.split(',')]
+            detector_kwargs['case_sensitive'] = case_sensitive
+
         # 创建任务
         task_queue = get_task_queue()
         task_id = task_queue.create_task(
             input_path=str(input_path),
             output_path=str(output_path),
+            detector_type=detector_type,
+            detector_kwargs=detector_kwargs,
             blur_method=blur_method,
             blur_strength=blur_strength,
             device=device,
             sample_interval=sample_interval,
             buffer_time=buffer_time,
-            precise_phone_location=precise_phone_location,
+            precise_location=precise_location,
             precise_max_iterations=precise_max_iterations
         )
 
@@ -243,7 +263,9 @@ async def get_task_status(task_id: str):
         started_at=task.started_at,
         completed_at=task.completed_at,
         error=task.error,
-        result=task.result
+        result=task.result,
+        current_step=task.current_step,
+        current_step_progress=task.current_step_progress
     )
 
 
@@ -275,7 +297,9 @@ async def list_tasks(
             started_at=task.started_at,
             completed_at=task.completed_at,
             error=task.error,
-            result=task.result
+            result=task.result,
+            current_step=task.current_step,
+            current_step_progress=task.current_step_progress
         ))
 
     # 按创建时间倒序排序
@@ -382,7 +406,7 @@ def start_server():
     import uvicorn
 
     # 解析命令行参数
-    parser = argparse.ArgumentParser(description="视频手机号脱敏 API 服务器")
+    parser = argparse.ArgumentParser(description="视频内容脱敏 API 服务器")
     parser.add_argument(
         "--data-dir",
         type=str,
@@ -407,7 +431,7 @@ def start_server():
 
     print(f"""
 ╔══════════════════════════════════════════════════════════════╗
-║          视频手机号脱敏 API 服务器                              ║
+║          视频内容脱敏 API 服务器                             ║
 ╚══════════════════════════════════════════════════════════════╝
 
 服务地址: http://{args.host}:{args.port}

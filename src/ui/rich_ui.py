@@ -32,8 +32,8 @@ class RichUI(ProgressCallback):
         self.stats = {
             'total_frames': 0,
             'processed_frames': 0,
-            'frames_with_phones': 0,
-            'total_phones_detected': 0,
+            'frames_with_patterns': 0,
+            'total_patterns_detected': 0,
             'ocr_calls': 0,
             'start_time': None,
             'phase_start_time': None,
@@ -53,7 +53,7 @@ class RichUI(ProgressCallback):
     def start_ui(self):
         """启动UI界面"""
         # 显示标题
-        title = "[bold green]视频手机号脱敏工具[/bold green]"
+        title = "[bold green]视频内容脱敏工具[/bold green]"
         if self.config.get('mode') == 'smart':
             title += " - [bold yellow]智能采样模式[/bold yellow]"
 
@@ -106,10 +106,10 @@ class RichUI(ProgressCallback):
         if self.layout:
             self._update_layout()
 
-    def on_phone_detected(self, frame_idx: int, text: str, confidence: float):
-        """检测到手机号"""
-        self.stats['total_phones_detected'] += 1
-        self.add_log(f"检测到手机号: {text} (置信度: {confidence:.2f})", "success")
+    def on_detected(self, frame_idx: int, text: str, confidence: float):
+        """检测到目标内容"""
+        self.stats['total_patterns_detected'] += 1
+        self.add_log(f"检测到目标内容: {text} (置信度: {confidence:.2f})", "success")
 
     def on_log(self, message: str, level: str = 'info'):
         """添加日志"""
@@ -215,7 +215,7 @@ class RichUI(ProgressCallback):
                 table.add_row("缓冲时间", f"{buffer} 秒")
 
         table.add_row("设备", self.config.get('device', 'cpu'))
-        table.add_row("精确定位", "✓ 是" if self.config.get('precise_phone_location', False) else "✗ 否")
+        table.add_row("精确定位", "✓ 是" if self.config.get('precise_location', False) else "✗ 否")
 
         return Panel(
             table,
@@ -291,14 +291,14 @@ class RichUI(ProgressCallback):
         if self.current_phase == "sampling":
             table.add_row("已扫描帧", f"{processed}/{total}")
             table.add_row("OCR调用", str(self.stats['ocr_calls']))
-            table.add_row("发现手机号", f"{self.stats['total_phones_detected']} 个")
+            table.add_row("发现目标内容", f"{self.stats['total_patterns_detected']} 个")
         elif self.current_phase == "blurring":
             table.add_row("已处理", f"{processed}/{total}")
-            table.add_row("已打码", f"{self.stats['frames_with_phones']} 帧")
+            table.add_row("已打码", f"{self.stats['frames_with_patterns']} 帧")
         else:
             table.add_row("已处理", f"{processed}/{total}")
-            table.add_row("含手机号", f"{self.stats['frames_with_phones']} 帧")
-            table.add_row("检测总数", f"{self.stats['total_phones_detected']} 个")
+            table.add_row("含目标内容", f"{self.stats['frames_with_patterns']} 帧")
+            table.add_row("检测总数", f"{self.stats['total_patterns_detected']} 个")
 
         return Panel(
             table,
@@ -402,8 +402,8 @@ class RichUI(ProgressCallback):
 
         table.add_row("总帧数", str(stats.get('total_frames', 0)))
         table.add_row("处理帧数", str(stats.get('processed_frames', 0)))
-        table.add_row("包含手机号", f"{stats.get('frames_with_phones', 0)} 帧")
-        table.add_row("检测总数", f"{stats.get('total_phones_detected', 0)} 个")
+        table.add_row("包含目标内容", f"{stats.get('frames_with_patterns', 0)} 帧")
+        table.add_row("检测总数", f"{stats.get('total_patterns_detected', 0)} 个")
 
         if 'ocr_calls' in stats:
             total_frames = stats.get('total_frames', 0)
@@ -413,9 +413,9 @@ class RichUI(ProgressCallback):
             table.add_row("节省调用", f"{total_frames - ocr_calls} 次")
             table.add_row("加速比", f"{speedup:.1f}x")
 
-        if 'unique_phones' in stats and stats['unique_phones']:
-            table.add_row("不重复手机号", f"{len(stats['unique_phones'])} 个")
-            table.add_row("手机号列表", ", ".join(sorted(stats['unique_phones'])))
+        if 'unique_patterns' in stats and stats['unique_patterns']:
+            table.add_row("不重复目标内容", f"{len(stats['unique_patterns'])} 个")
+            table.add_row("目标内容列表", ", ".join(sorted(stats['unique_patterns'])))
 
         table.add_row("处理时间", f"{elapsed:.2f} 秒")
         table.add_row("平均速度", f"{avg_fps:.2f} FPS")

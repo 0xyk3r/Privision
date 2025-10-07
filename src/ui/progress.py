@@ -33,13 +33,13 @@ class ProgressCallback(ABC):
         pass
 
     @abstractmethod
-    def on_phone_detected(self, frame_idx: int, text: str, confidence: float):
+    def on_detected(self, frame_idx: int, text: str, confidence: float):
         """
-        检测到手机号时调用
+        检测到目标内容时调用
 
         Args:
             frame_idx: 帧号
-            text: 手机号文本
+            text: 目标内容文本
             confidence: 置信度
         """
         pass
@@ -115,9 +115,9 @@ class ConsoleProgress(ProgressCallback):
             print(f"进度: {progress}% ({current_frame}/{total_frames}) - 速度: {fps:.2f} FPS")
             self.last_progress = progress
 
-    def on_phone_detected(self, frame_idx: int, text: str, confidence: float):
-        """检测到手机号"""
-        print(f"  [帧 {frame_idx}] 检测到手机号: {text} (置信度: {confidence:.2f})")
+    def on_detected(self, frame_idx: int, text: str, confidence: float):
+        """检测到目标内容"""
+        print(f"  [帧 {frame_idx}] 检测到目标内容: {text} (置信度: {confidence:.2f})")
 
     def on_log(self, message: str, level: str = 'info'):
         """输出日志"""
@@ -144,8 +144,8 @@ class ConsoleProgress(ProgressCallback):
         print(f"{'='*60}")
         print(f"总帧数: {stats.get('total_frames', 0)}")
         print(f"处理帧数: {stats.get('processed_frames', 0)}")
-        print(f"包含手机号: {stats.get('frames_with_phones', 0)} 帧")
-        print(f"检测总数: {stats.get('total_phones_detected', 0)} 个")
+        print(f"包含目标: {stats.get('frames_with_patterns', 0)} 帧")
+        print(f"检测总数: {stats.get('total_patterns_detected', 0)} 个")
         if 'ocr_calls' in stats:
             print(f"OCR调用: {stats['ocr_calls']} 次")
         print(f"处理时间: {elapsed:.2f} 秒")

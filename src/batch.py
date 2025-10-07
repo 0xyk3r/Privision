@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 批量视频处理模块
-用于批量处理多个视频文件中的手机号码
+用于批量打码处理多个视频文件中的目标内容
 """
 import sys
 from pathlib import Path
@@ -21,6 +21,8 @@ class BatchVideoProcessor:
 
     def __init__(
         self,
+        detector_type: str = 'phone',
+        detector_kwargs: Optional[Dict[str, Any]] = None,
         blur_method: Literal['gaussian', 'pixelate', 'black'] = 'gaussian',
         device: str = 'cpu',
         mode: Literal['frame-by-frame', 'smart'] = 'frame-by-frame',
@@ -32,6 +34,8 @@ class BatchVideoProcessor:
         初始化批量处理器
 
         Args:
+            detector_type: 检测器类型 ('phone', 'keyword', 'idcard')
+            detector_kwargs: 检测器参数（字典）
             blur_method: 打码方式 ('gaussian', 'pixelate', 'black')
             device: 计算设备 ('cpu' 或 'gpu:0', 'gpu:1', ...)
             mode: 处理模式 ('frame-by-frame' 或 'smart')
@@ -39,6 +43,8 @@ class BatchVideoProcessor:
             enable_visualize: 是否启用可视化
             output_suffix: 输出文件后缀
         """
+        self.detector_type = detector_type
+        self.detector_kwargs = detector_kwargs or {}
         self.blur_method = blur_method
         self.device = device
         self.mode = mode
@@ -82,6 +88,8 @@ class BatchVideoProcessor:
             config = ProcessConfig(
                 input_path=str(video_file),
                 output_path=str(output_file),
+                detector_type=self.detector_type,
+                detector_kwargs=self.detector_kwargs,
                 blur_method=self.blur_method,
                 device=self.device,
                 mode=self.mode,
@@ -176,9 +184,9 @@ class BatchVideoProcessor:
 
             if stats is not None:
                 processed_files += 1
-                total_phones += stats.get('total_phones_detected', 0)
+                total_phones += stats.get('total_patterns_detected', 0)
                 print(f"✓ 完成: {output_file.name}")
-                print(f"  检测到手机号: {stats.get('total_phones_detected', 0)} 个")
+                print(f"  检测到目标内容: {stats.get('total_patterns_detected', 0)} 个")
             else:
                 failed_files += 1
 
@@ -192,7 +200,7 @@ class BatchVideoProcessor:
         print(f"总文件数: {total_files}")
         print(f"成功处理: {processed_files}")
         print(f"处理失败: {failed_files}")
-        print(f"检测到手机号总数: {total_phones}")
+        print(f"检测到目标内容总数: {total_phones}")
         print(f"总耗时: {duration}")
         print("=" * 60)
 
@@ -201,7 +209,7 @@ class BatchVideoProcessor:
             'total': total_files,
             'processed': processed_files,
             'failed': failed_files,
-            'total_phones_detected': total_phones,
+            'total_patterns_detected': total_phones,
             'duration': str(duration),
         }
 
@@ -209,7 +217,7 @@ class BatchVideoProcessor:
 def main():
     """命令行入口函数"""
     parser = argparse.ArgumentParser(
-        description='批量处理视频文件中的手机号码',
+        description='批量处理视频文件中的目标内容',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
@@ -222,6 +230,22 @@ def main():
 
     parser.add_argument('input_dir', help='输入视频目录')
     parser.add_argument('output_dir', help='输出视频目录')
+    parser.add_argument(
+        '--detector',
+        choices=['phone', 'keyword', 'idcard'],
+        default='phone',
+        help='检测器类型 (默认: phone)'
+    )
+    parser.add_argument(
+        '--keywords',
+        nargs='+',
+        help='关键字列表（仅在 --detector keyword 时有效）'
+    )
+    parser.add_argument(
+        '--case-sensitive',
+        action='store_true',
+        help='关键字检测是否区分大小写'
+    )
     parser.add_argument(
         '--blur-method',
         choices=['gaussian', 'pixelate', 'black'],
@@ -262,8 +286,17 @@ def main():
 
     args = parser.parse_args()
 
+    # 准备检测器参数
+    detector_kwargs = {}
+    if args.detector == 'keyword':
+        if args.keywords:
+            detector_kwargs['keywords'] = args.keywords
+        detector_kwargs['case_sensitive'] = args.case_sensitive
+
     # 创建批量处理器
     processor = BatchVideoProcessor(
+        detector_type=args.detector,
+        detector_kwargs=detector_kwargs,
         blur_method=args.blur_method,
         device=args.device,
         mode=args.mode,

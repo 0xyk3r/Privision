@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-视频手机号脱敏工具 - 统一CLI入口
-使用PaddleOCR识别视频中的手机号并进行打码处理
+视频内容脱敏工具 - 统一CLI入口
+使用PaddleOCR识别视频中的目标内容并进行打码处理
 """
 import sys
 
@@ -25,7 +25,7 @@ def main():
             print("快捷键:")
             print("  Q/ESC - 退出")
             print("  P     - 暂停/继续")
-            print("  T     - 切换标签显示 (仅手机号 -> 全部显示 -> 隐藏)")
+            print("  T     - 切换标签显示 (仅目标内容 -> 全部显示 -> 隐藏)")
             print()
         elif config.enable_rich:
             # Rich UI模式

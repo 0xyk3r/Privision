@@ -4,9 +4,10 @@
 """
 import re
 from typing import List, Tuple
+from ..detector_base import BaseDetector
 
 
-class PhoneDetector:
+class PhoneDetector(BaseDetector):
     """中国大陆手机号检测器"""
 
     # 中国大陆手机号正则：1开头，第二位3-9，后面9位数字，共11位
@@ -16,8 +17,17 @@ class PhoneDetector:
     # 严格模式：手机号前后必须是非数字字符或字符串边界
     PHONE_PATTERN_STRICT = re.compile(r'(?<!\d)1[3-9]\d{9}(?!\d)')
 
-    @classmethod
-    def contains_phone(cls, text: str, strict: bool = True) -> bool:
+    @property
+    def name(self) -> str:
+        """检测器名称"""
+        return "phone"
+
+    @property
+    def description(self) -> str:
+        """检测器描述"""
+        return "中国大陆手机号检测器 (11位手机号)"
+
+    def contains_pattern(self, text: str, strict: bool = True) -> bool:
         """
         检查文本中是否包含手机号
 
@@ -35,7 +45,7 @@ class PhoneDetector:
         cleaned_text = re.sub(r'[\s\-\u3000]', '', text)
 
         # 使用严格模式或普通模式
-        pattern = cls.PHONE_PATTERN_STRICT if strict else cls.PHONE_PATTERN
+        pattern = self.PHONE_PATTERN_STRICT if strict else self.PHONE_PATTERN
         matches = pattern.findall(cleaned_text)
 
         if not matches:
@@ -43,13 +53,12 @@ class PhoneDetector:
 
         # 额外过滤：检查是否是超长数字串的一部分
         for match in matches:
-            if cls._is_valid_phone_context(cleaned_text, match):
+            if self._is_valid_phone_context(cleaned_text, match):
                 return True
 
         return False
 
-    @classmethod
-    def _is_valid_phone_context(cls, text: str, phone: str) -> bool:
+    def _is_valid_phone_context(self, text: str, phone: str) -> bool:
         """
         验证手机号的上下文是否合理
 
@@ -92,8 +101,7 @@ class PhoneDetector:
 
         return True
 
-    @classmethod
-    def find_phones(cls, text: str) -> List[str]:
+    def find_patterns(self, text: str) -> List[str]:
         """
         查找文本中的所有手机号
 
@@ -107,10 +115,9 @@ class PhoneDetector:
             return []
         # 移除空格、横线等分隔符后再匹配
         cleaned_text = re.sub(r'[\s\-\u3000]', '', text)
-        return cls.PHONE_PATTERN.findall(cleaned_text)
+        return self.PHONE_PATTERN.findall(cleaned_text)
 
-    @classmethod
-    def find_phone_positions(cls, text: str) -> List[Tuple[str, int, int]]:
+    def find_pattern_positions(self, text: str) -> List[Tuple[str, int, int]]:
         """
         查找文本中所有手机号及其位置（返回在原始文本中的位置）
 
@@ -136,7 +143,7 @@ class PhoneDetector:
             original_idx += 1
 
         results = []
-        for match in cls.PHONE_PATTERN.finditer(cleaned_text):
+        for match in self.PHONE_PATTERN.finditer(cleaned_text):
             phone_number = match.group()
             cleaned_start = match.start()
             cleaned_end = match.end()
@@ -155,6 +162,25 @@ class PhoneDetector:
 
         return results
 
+    # 兼容旧API的类方法
+    @classmethod
+    def contains_phone(cls, text: str, strict: bool = True) -> bool:
+        """兼容旧API - 检查文本中是否包含手机号"""
+        detector = cls()
+        return detector.contains_pattern(text, strict)
+
+    @classmethod
+    def find_phones(cls, text: str) -> List[str]:
+        """兼容旧API - 查找文本中的所有手机号"""
+        detector = cls()
+        return detector.find_patterns(text)
+
+    @classmethod
+    def find_phone_positions(cls, text: str) -> List[Tuple[str, int, int]]:
+        """兼容旧API - 查找文本中所有手机号及其位置"""
+        detector = cls()
+        return detector.find_pattern_positions(text)
+
 
 if __name__ == '__main__':
     # 测试用例
@@ -170,9 +196,10 @@ if __name__ == '__main__':
         ""
     ]
 
-    print("=== 手机号检测测试 ===")
+    print(f"=== {detector.description} ===")
+    print(f"检测器名称: {detector.name}")
     for text in test_cases:
         print(f"\n文本: {text}")
-        print(f"包含手机号: {detector.contains_phone(text)}")
-        print(f"找到的手机号: {detector.find_phones(text)}")
-        print(f"位置信息: {detector.find_phone_positions(text)}")
+        print(f"包含手机号: {detector.contains_pattern(text)}")
+        print(f"找到的手机号: {detector.find_patterns(text)}")
+        print(f"位置信息: {detector.find_pattern_positions(text)}")
