@@ -216,8 +216,8 @@ def parse_args():
     # 检查输出路径
     output_path = Path(args.output)
     if output_path.exists():
-        response = input(f"警告: 输出文件已存在: {args.output}\n是否覆盖? (y/n): ")
-        if response.lower() not in ['y', 'yes']:
+        response = input(f"警告: 输出路径已存在: {args.output}\n是否覆盖? (Y/n): ").strip().lower()
+        if response in ['n', 'no']:
             print("操作已取消")
             sys.exit(0)
 

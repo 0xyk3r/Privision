@@ -21,7 +21,7 @@ class OCRDetector:
         """
         # 初始化PaddleOCR 3.x
         # PaddleOCR接受的device格式: "cpu" 或 "gpu:0"
-        print(f"初始化PaddleOCR (3.x)，设备: {device}, 语言: {lang}")
+        print(f"Initializing Detector，device: {device}, lang: {lang}")
 
         self.ocr = PaddleOCR(
             lang=lang,

@@ -138,11 +138,11 @@ class ConsoleProgress(ProgressCallback):
     def on_log(self, message: str, level: str = 'info'):
         """输出日志"""
         prefix = {
-            'info': '[INFO]',
-            'success': '[✓]',
-            'warning': '[!]',
-            'error': '[✗]'
-        }.get(level, '[INFO]')
+            'info': '[ℹ️]',
+            'success': '[✅]',
+            'warning': '[⚠️]',
+            'error': '[❌]'
+        }.get(level, '[ℹ️]')
         print(f"{prefix} {message}")
 
     def on_phase_change(self, phase: str, phase_num: int, total_phases: int):
