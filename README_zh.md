@@ -1,11 +1,11 @@
 # Privision - 视频内容智能脱敏工具
 
-> 中文 | [English](README.md)
-
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
 > **通用视频内容脱敏解决方案** - 基于 OCR 的智能信息识别与打码系统
+
+> 中文 | [English](README.md)
 
 Privision 是一款强大的视频内容脱敏工具，采用先进的 OCR 技术自动识别并打码视频中的敏感信息。支持**手机号、身份证号、自定义关键字**等多种检测模式，提供命令行、批量处理和 RESTful API 三种使用方式。
 

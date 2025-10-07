@@ -1,11 +1,11 @@
 # Privision - Video Content Privacy Masking Tool
 
-> [中文文档](README_zh.md) | English
-
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
 > **Universal Video Content Privacy Solution** - Intelligent Information Recognition and Masking System Based on OCR
+
+> [中文文档](README_zh.md) | English
 
 Privision is a powerful video content privacy masking tool that uses advanced OCR technology to automatically identify and mask sensitive information in videos. It supports multiple detection modes including **phone numbers, ID card numbers, and custom keywords**, and provides three usage methods: command-line interface, batch processing, and RESTful API.
 
