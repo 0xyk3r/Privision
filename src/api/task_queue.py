@@ -243,11 +243,11 @@ class TaskQueue:
 
             # 创建进度回调类
             class APIProgressCallback(ProgressCallback):
-                # 步骤权重：detection(识别)80%、masking(打码)15%、compression(压缩)5%
+                # 步骤权重：detection(识别)80%、masking(打码)18%、compression(压缩)2%
                 STEP_WEIGHTS = {
                     'detection': 0.80,
-                    'masking': 0.15,
-                    'compression': 0.05
+                    'masking': 0.18,
+                    'compression': 0.02
                 }
 
                 def __init__(self, task, tasks_lock, save_func):

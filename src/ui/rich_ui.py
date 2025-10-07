@@ -13,8 +13,7 @@ from rich.console import Console
 from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TaskProgressColumn, TimeRemainingColumn, \
-    MofNCompleteColumn
+from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TaskProgressColumn, TimeRemainingColumn
 from rich.table import Table
 from rich.text import Text
 
@@ -54,6 +53,13 @@ class RichUI(ProgressCallback):
         'fire': '🔥',
     }
 
+    # 步骤权重：detection(识别)80%、masking(打码)18%、compression(压缩)2%
+    STEP_WEIGHTS = {
+        'detection': 0.80,
+        'masking': 0.18,
+        'compression': 0.02
+    }
+
     def __init__(self, config: Dict[str, Any]):
         """
         初始化Rich UI
@@ -75,6 +81,7 @@ class RichUI(ProgressCallback):
         }
         self.logs = deque(maxlen=150)
         self.current_phase = "processing"
+        self.current_step = None  # 当前步骤名称
         self.phase_info = {
             'total_phases': 1,
             'current_phase': 1,
@@ -85,8 +92,9 @@ class RichUI(ProgressCallback):
         self.layout = None
         self.live = None
         self.progress = None
-        self.main_task_id = None
-        self.phase_task_id = None
+        self.step_task_ids = {}  # 步骤任务ID字典
+        self.current_step_task_id = None  # 当前步骤进度条ID
+        self.total_task_id = None  # 总进度条ID
 
     def start_ui(self):
         """启动UI界面"""
@@ -116,8 +124,6 @@ class RichUI(ProgressCallback):
                 bar_width=None  # 自动宽度
             ),
             TaskProgressColumn(),
-            TextColumn("•"),
-            MofNCompleteColumn(),
             TextColumn("•"),
             TimeRemainingColumn(),
             expand=True  # 扩展以填充可用空间
@@ -170,11 +176,30 @@ class RichUI(ProgressCallback):
         # 启动Live显示
         self._start_live_display()
 
-        # 创建主进度任务
+        # 创建进度条任务 - 为每个步骤创建单独任务
         if self.progress:
-            self.main_task_id = self.progress.add_task(
-                f"[{self.COLORS['primary']}]总体进度",
-                total=total_frames
+            self.step_task_ids = {
+                'detection': self.progress.add_task(
+                    f"[{self.COLORS['info']}]识别检测",
+                    total=100,
+                    visible=True  # 初始步骤可见
+                ),
+                'masking': self.progress.add_task(
+                    f"[{self.COLORS['warning']}]打码处理",
+                    total=100,
+                    visible=False
+                ),
+                'compression': self.progress.add_task(
+                    f"[{self.COLORS['primary']}]压缩输出",
+                    total=100,
+                    visible=False
+                )
+            }
+
+            # 总进度条最后添加（显示在下方）
+            self.total_task_id = self.progress.add_task(
+                f"[{self.COLORS['success']}]总体进度",
+                total=100
             )
 
         self._update_layout()
@@ -185,9 +210,34 @@ class RichUI(ProgressCallback):
         self.phase_info['phase_processed'] = current_frame
         self.current_phase = phase
 
+        # 根据阶段映射到步骤名称
+        if phase == 'sampling':
+            step_name = 'detection'
+        elif phase == 'blurring':
+            step_name = 'masking'
+        elif phase == 'compress':
+            step_name = 'compression'
+        else:
+            step_name = 'detection'  # 默认为识别
+
+        self.current_step = step_name
+
+        # 计算当前步骤进度 (0-100)
+        step_progress = (current_frame / total_frames) * 100 if total_frames > 0 else 0
+
+        # 计算总进度
+        total_progress = self._calculate_total_progress(step_name, step_progress)
+
         # 更新进度条
-        if self.progress and self.main_task_id is not None:
-            self.progress.update(self.main_task_id, completed=current_frame)
+        if self.progress and hasattr(self, 'step_task_ids'):
+            if step_name in self.step_task_ids:
+                self.progress.update(
+                    self.step_task_ids[step_name],
+                    completed=step_progress
+                )
+
+            if self.total_task_id is not None:
+                self.progress.update(self.total_task_id, completed=total_progress)
 
         # 更新UI
         if self.layout:
@@ -218,21 +268,34 @@ class RichUI(ProgressCallback):
         self.stats['phase_start_time'] = time.time()
         self.stats['processed_frames'] = 0
 
+        # 根据阶段映射到步骤名称
+        if 'detection' in phase or phase == 'sampling':
+            step_name = 'detection'
+        elif 'masking' in phase or phase == 'blurring':
+            step_name = 'masking'
+        elif 'compression' in phase or phase == 'compress':
+            step_name = 'compression'
+        else:
+            step_name = phase
+
+        self.current_step = step_name
+
         self.add_log(f"阶段 {phase_num}/{total_phases}: {phase}", "info")
 
-        # 更新进度条描述
-        if self.progress and self.main_task_id is not None:
-            phase_colors = {
-                'sampling': self.COLORS['info'],
-                'blurring': self.COLORS['warning'],
-                'processing': self.COLORS['primary']
-            }
-            color = phase_colors.get(phase, self.COLORS['primary'])
-            self.progress.update(
-                self.main_task_id,
-                description=f"[{color}]{phase}",
-                completed=0
-            )
+        # 切换步骤可见性
+        if self.progress and hasattr(self, 'step_task_ids'):
+            for step, task_id in self.step_task_ids.items():
+                if step == step_name:
+                    # 显示当前步骤，重置进度
+                    self.progress.update(task_id, visible=True, completed=0)
+                else:
+                    # 隐藏其他步骤
+                    self.progress.update(task_id, visible=False)
+
+            # 更新总进度
+            if self.total_task_id is not None:
+                total_progress = self._calculate_total_progress(step_name, 0)
+                self.progress.update(self.total_task_id, completed=total_progress)
 
         self._update_layout()
 
@@ -243,8 +306,14 @@ class RichUI(ProgressCallback):
         self.add_log(f"输出文件: {stats.get('output_path', '')}", "success")
 
         # 完成进度条
-        if self.progress and self.main_task_id is not None:
-            self.progress.update(self.main_task_id, completed=self.stats['total_frames'])
+        if self.progress:
+            # 完成当前步骤进度条
+            if self.current_step_task_id is not None:
+                self.progress.update(self.current_step_task_id, completed=100)
+
+            # 完成总进度条
+            if self.total_task_id is not None:
+                self.progress.update(self.total_task_id, completed=100)
 
         # 最后更新一次
         self._update_layout()
@@ -282,6 +351,30 @@ class RichUI(ProgressCallback):
         """打码时记录信息"""
         if region_count > 0:
             self.add_log(f"帧 {frame_idx:,}: 应用打码 ({region_count} 个区域)", "info")
+
+    def _calculate_total_progress(self, step_name: str, step_progress: float) -> float:
+        """
+        计算总进度
+
+        Args:
+            step_name: 当前步骤名称 (detection/masking/compression)
+            step_progress: 当前步骤进度 (0-100)
+
+        Returns:
+            总进度 (0-100)
+        """
+        # 已完成步骤的累计权重
+        completed_weight = 0.0
+        if step_name == 'masking':
+            completed_weight = self.STEP_WEIGHTS['detection']
+        elif step_name == 'compression':
+            completed_weight = self.STEP_WEIGHTS['detection'] + self.STEP_WEIGHTS['masking']
+
+        # 当前步骤的权重贡献
+        current_weight = self.STEP_WEIGHTS.get(step_name, 0) * (step_progress / 100.0)
+
+        # 总进度 = 已完成权重 + 当前步骤权重贡献
+        return (completed_weight + current_weight) * 100
 
     # ========== UI 渲染方法 ==========
 
@@ -611,9 +704,9 @@ class RichUI(ProgressCallback):
 
             # 计算其他区域占用的高度
             # header区域：9行
-            # progress区域：3行
+            # progress区域：4行
             # 面板边框和间距：约3行
-            reserved_height = 9 + 3 + 3
+            reserved_height = 9 + 4 + 3
 
             # 可用于显示日志的高度
             available_height = max(5, terminal_height - reserved_height)
@@ -667,7 +760,7 @@ class RichUI(ProgressCallback):
         layout.split_column(
             Layout(name="header", size=9),  # 头部区域
             Layout(name="middle"),  # 中间区域
-            Layout(name="progress", size=3)  # 进度条区域
+            Layout(name="progress", size=4)  # 进度条区域
         )
 
         layout["header"].split_row(
