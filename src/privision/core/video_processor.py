@@ -100,7 +100,9 @@ class VideoProcessor:
             level: 日志级别 (info, success, warning, error)
         """
         if self.progress_callback:
-            self.progress_callback.on_log(message, level)
+            # 去除开头的换行符，避免在 UI 中显示不必要的空行
+            cleaned_message = message.lstrip('\n')
+            self.progress_callback.on_log(cleaned_message, level)
         else:
             print(message)
 
