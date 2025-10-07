@@ -93,6 +93,16 @@ class ProgressCallback(ABC):
         """
         pass  # 默认空实现，子类可选择性重写
 
+    def on_blur(self, frame_idx: int, region_count: int):
+        """
+        打码时调用（用于记录打码信息）
+
+        Args:
+            frame_idx: 当前帧号
+            region_count: 该帧打码的区域数量
+        """
+        pass  # 默认空实现，子类可选择性重写
+
 
 class ConsoleProgress(ProgressCallback):
     """简单的控制台进度输出（当禁用Rich时使用）"""
@@ -168,3 +178,8 @@ class ConsoleProgress(ProgressCallback):
         """OCR调用"""
         # 在这里可以统计OCR调用次数
         super().on_ocr_call()  # 调用父类的空实现（可选）
+
+    def on_blur(self, frame_idx: int, region_count: int):
+        """打码信息"""
+        # 在这里可以记录打码的帧和区域数量
+        super().on_blur(frame_idx, region_count)  # 调用父类的空实现（可选）

@@ -109,7 +109,7 @@ class RichUI(ProgressCallback):
     def on_detected(self, frame_idx: int, text: str, confidence: float):
         """检测到目标内容"""
         self.stats['total_patterns_detected'] += 1
-        self.add_log(f"检测到目标内容: {text} (置信度: {confidence:.2f})", "success")
+        self.add_log(f"帧 {frame_idx}: 检测到目标内容: {text} (置信度: {confidence:.2f})", "success")
 
     def on_log(self, message: str, level: str = 'info'):
         """添加日志"""
@@ -155,6 +155,11 @@ class RichUI(ProgressCallback):
     def on_ocr_call(self):
         """OCR调用时更新计数"""
         self.stats['ocr_calls'] += 1
+
+    def on_blur(self, frame_idx: int, region_count: int):
+        """打码时记录信息"""
+        if region_count > 0:
+            self.add_log(f"帧 {frame_idx}: 应用打码 ({region_count} 个区域)", "info")
 
     # ========== UI 渲染方法 ==========
 

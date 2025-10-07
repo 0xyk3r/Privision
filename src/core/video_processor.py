@@ -516,10 +516,13 @@ class VideoProcessor:
                             frame, bbox, text, debug=False
                         )
                         if result is not None:
+                            # 实际进行了精确定位
                             refined_bbox, refined_text = result
                             blur_bbox = refined_bbox
-                            if self.config.enable_visualize:
-                                self._log(f"  [帧 {frame_idx}] ✓ 精确定位: '{text}' → '{refined_text}'")
+                            if self.progress_callback:
+                                self.progress_callback.on_log(
+                                    f"帧 {frame_idx}: 精确定位 '{text}' → '{refined_text}'", 'success'
+                                )
 
                     # 计算打码范围
                     start_frame = max(0, frame_idx - buffer_frames)
@@ -660,6 +663,10 @@ class VideoProcessor:
 
             frame_idx += 1
 
+            # 调用打码回调
+            if self.progress_callback and current_frame_detections > 0:
+                self.progress_callback.on_blur(frame_idx - 1, current_frame_detections)
+
             # 更新进度
             if self.progress_callback:
                 self.progress_callback.on_progress(
@@ -720,8 +727,13 @@ class VideoProcessor:
                         frame, bbox, text, debug=False
                     )
                     if result is not None:
+                        # 实际进行了精确定位
                         refined_bbox, refined_text = result
                         blur_bbox = refined_bbox
+                        if self.progress_callback:
+                            self.progress_callback.on_log(
+                                f"帧 {frame_idx}: 精确定位 '{text}' → '{refined_text}'", 'success'
+                            )
 
                 # 应用打码
                 processed_frame = apply_blur(
