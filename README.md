@@ -54,16 +54,17 @@ Privision is a powerful video content privacy masking tool that uses advanced OC
 
 ## ⚡ Quick Start
 
-### Installation
+### For Users (Recommended)
 
 ```bash
-# Clone the repository
-git clone https://github.com/0xyk3r/Privision.git
-cd Privision
+# Install from PyPI
+pip install privision
 
-# Install in development mode (recommended)
-pip install -e .
+# Verify installation
+privision --help
 ```
+
+> For GPU acceleration, please refer to the [GPU Acceleration Installation](#gpu-acceleration-installation) section
 
 ### Basic Usage
 
@@ -92,7 +93,33 @@ privision input.mp4 output.mp4 --device gpu:0 --mode smart
 - pip
 - (Optional) NVIDIA GPU + CUDA Toolkit
 
-### Installation Steps
+### For Users: Install from PyPI
+
+**Install the latest stable version:**
+
+```bash
+# Install from PyPI
+pip install privision
+
+# Verify installation
+privision --help
+```
+
+After installation, you can directly use the following commands:
+- `privision` - Single video processing
+- `privision-batch` - Batch processing
+- `privision-server` - API server
+
+**Basic usage example:**
+```bash
+# Detect and mask phone numbers
+privision input.mp4 output.mp4
+
+# Smart sampling mode (10-30x faster)
+privision input.mp4 output.mp4 --mode smart
+```
+
+### For Developers: Install from Source
 
 #### Method 1: Development Mode Installation (Recommended)
 
@@ -101,7 +128,7 @@ privision input.mp4 output.mp4 --device gpu:0 --mode smart
 git clone https://github.com/0xyk3r/Privision.git
 cd Privision
 
-# Install project (development mode)
+# Install in development mode
 pip install -e .
 
 # Verify installation
@@ -116,7 +143,11 @@ After installation, you can directly use the following commands:
 #### Method 2: Install Dependencies Only
 
 ```bash
+# Clone the repository
+git clone https://github.com/0xyk3r/Privision.git
 cd Privision
+
+# Install dependencies only
 pip install -r requirements.txt
 ```
 

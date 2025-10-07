@@ -54,16 +54,17 @@ Privision 是一款强大的视频内容脱敏工具，采用先进的 OCR 技�
 
 ## ⚡ 快速开始
 
-### 安装
+### 用户安装（推荐）
 
 ```bash
-# 克隆项目
-git clone https://github.com/0xyk3r/Privision.git
-cd Privision
+# 从 PyPI 安装
+pip install privision
 
-# 开发模式安装（推荐）
-pip install -e .
+# 验证安装
+privision --help
 ```
+
+> 如果需要 GPU 加速，请参考 [GPU 加速安装](#gpu-加速安装) 部分
 
 ### 基本使用
 
@@ -92,7 +93,33 @@ privision input.mp4 output.mp4 --device gpu:0 --mode smart
 - pip
 - (可选) NVIDIA GPU + CUDA Toolkit
 
-### 安装步骤
+### 用户安装：从 PyPI 安装
+
+**安装最新稳定版本：**
+
+```bash
+# 从 PyPI 安装
+pip install privision
+
+# 验证安装
+privision --help
+```
+
+安装后可直接使用以下命令：
+- `privision` - 单个视频处理
+- `privision-batch` - 批量处理
+- `privision-server` - API 服务器
+
+**基本使用示例：**
+```bash
+# 检测并打码手机号
+privision input.mp4 output.mp4
+
+# 智能采样模式（速度提升 10-30 倍）
+privision input.mp4 output.mp4 --mode smart
+```
+
+### 开发者安装：从源码安装
 
 #### 方式 1: 开发模式安装（推荐）
 
@@ -101,7 +128,7 @@ privision input.mp4 output.mp4 --device gpu:0 --mode smart
 git clone https://github.com/0xyk3r/Privision.git
 cd Privision
 
-# 安装项目（开发模式）
+# 开发模式安装
 pip install -e .
 
 # 验证安装
@@ -116,7 +143,11 @@ privision --help
 #### 方式 2: 仅安装依赖
 
 ```bash
+# 克隆项目
+git clone https://github.com/0xyk3r/Privision.git
 cd Privision
+
+# 仅安装依赖
 pip install -r requirements.txt
 ```
 
