@@ -7,8 +7,8 @@ import sys
 from pathlib import Path
 from typing import Literal
 
-from src.config.args import ProcessConfig
-from src.core.video_processor import VideoProcessor
+from privision.config.args import ProcessConfig
+from privision.core.video_processor import VideoProcessor
 
 
 def process_videos_in_directory(

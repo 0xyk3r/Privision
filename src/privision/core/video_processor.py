@@ -10,13 +10,13 @@ from typing import Optional, Dict, Any, List, Tuple
 from pathlib import Path
 from dataclasses import dataclass
 
-from src.config.args import ProcessConfig
-from src.ui.progress import ProgressCallback
-from src.ui.visualizer import Visualizer
-from src.core.ocr_detector import OCRDetector
-from src.core.detector_factory import DetectorFactory
-from src.core.precise_locator import PreciseLocator
-from src.core.blur import apply_blur
+from privision.config.args import ProcessConfig
+from privision.ui.progress import ProgressCallback
+from privision.ui.visualizer import Visualizer
+from privision.core.ocr_detector import OCRDetector
+from privision.core.detector_factory import DetectorFactory
+from privision.core.precise_locator import PreciseLocator
+from privision.core.blur import apply_blur
 
 
 @dataclass

@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from src.api.task_queue import get_task_queue, TaskStatus
+from privision.api.task_queue import get_task_queue, TaskStatus
 
 
 # ====== 全局配置 ======
@@ -34,8 +34,8 @@ def init_directories(data_dir: str = None):
     global DATA_DIR, UPLOAD_DIR, OUTPUT_DIR, TASKS_DIR
 
     if data_dir is None:
-        # 默认使用项目根目录（src的父目录）
-        project_root = Path(__file__).parent.parent.resolve()
+        # 默认使用项目根目录
+        project_root = Path(__file__).parent.parent.parent.resolve()
         DATA_DIR = project_root / "api-data"
     else:
         DATA_DIR = Path(data_dir).resolve()
@@ -128,7 +128,7 @@ async def health():
     }
 
 
-@app.post("/api/tasks", response_model=TaskCreateResponse, tags=["任务管理"])
+@app.post("api/tasks", response_model=TaskCreateResponse, tags=["任务管理"])
 async def create_task(
     file: UploadFile = File(..., description="要处理的视频文件"),
     detector_type: str = Form("phone", description="检测器类型: phone/keyword/idcard"),
@@ -239,7 +239,7 @@ async def create_task(
         raise HTTPException(status_code=500, detail=f"创建任务失败: {str(e)}")
 
 
-@app.get("/api/tasks/{task_id}", response_model=TaskStatusResponse, tags=["任务管理"])
+@app.get("api/tasks/{task_id}", response_model=TaskStatusResponse, tags=["任务管理"])
 async def get_task_status(task_id: str):
     """
     查询任务进度
@@ -269,7 +269,7 @@ async def get_task_status(task_id: str):
     )
 
 
-@app.get("/api/tasks", response_model=TaskListResponse, tags=["任务管理"])
+@app.get("api/tasks", response_model=TaskListResponse, tags=["任务管理"])
 async def list_tasks(
     status: Optional[str] = Query(None, description="按状态过滤: pending/processing/completed/failed"),
     limit: int = Query(100, ge=1, le=1000, description="返回任务数量限制")
@@ -314,7 +314,7 @@ async def list_tasks(
     )
 
 
-@app.get("/api/tasks/{task_id}/download", tags=["任务管理"])
+@app.get("api/tasks/{task_id}/download", tags=["任务管理"])
 async def download_result(task_id: str):
     """
     下载处理后的视频文件
@@ -350,7 +350,7 @@ async def download_result(task_id: str):
     )
 
 
-@app.delete("/api/tasks/{task_id}", tags=["任务管理"])
+@app.delete("api/tasks/{task_id}", tags=["任务管理"])
 async def delete_task(task_id: str):
     """
     删除任务及其关联文件（输入文件和输出文件）
@@ -449,7 +449,7 @@ API 文档: http://localhost:{args.port}/docs
 """)
 
     uvicorn.run(
-        "src.server:app",
+        "privision.server:app",
         host=args.host,
         port=args.port,
         reload=False,

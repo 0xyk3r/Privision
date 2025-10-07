@@ -5,10 +5,8 @@
 """
 import cv2
 import sys
-from pathlib import Path
-from src.core.video_processor import VideoProcessor
-from src.core.ocr_detector import OCRDetector
-from src.core.detectors.phone_detector import PhoneDetector
+from privision.core.ocr_detector import OCRDetector
+from privision.core.detectors.phone_detector import PhoneDetector
 
 
 def test_single_frame(video_path: str, frame_number: int = 0, save_debug: bool = True):

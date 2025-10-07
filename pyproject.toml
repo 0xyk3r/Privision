@@ -28,16 +28,16 @@ classifiers = [
 ]
 
 dependencies = [
-    "paddlepaddle>=2.5.0",
-    "paddleocr>=2.7.0",
+    "paddlepaddle>=3.0.0",
+    "paddleocr>=3.0.0",
     "opencv-python>=4.8.0",
     "numpy>=1.24.0",
     "Pillow>=10.0.0",
+    "rich>=13.0.0",
     "fastapi>=0.104.0",
     "uvicorn>=0.24.0",
-    "pydantic>=2.4.0",
     "python-multipart>=0.0.6",
-    "rich>=13.0.0",
+    "pydantic>=2.4.0",
 ]
 
 [project.optional-dependencies]
@@ -48,9 +48,9 @@ dev = [
 ]
 
 [project.scripts]
-privision = "src.main:main"
-privision-server = "src.server:start_server"
-privision-batch = "src.batch:main"
+privision = "privision.main:main"
+privision-server = "privision.server:start_server"
+privision-batch = "privision.batch:main"
 
 [project.urls]
 Homepage = "https://github.com/0xyk3r/Privision"
@@ -58,7 +58,10 @@ Repository = "https://github.com/0xyk3r/Privision"
 Issues = "https://github.com/0xyk3r/Privision/issues"
 
 [tool.setuptools]
-packages = ["src", "src.api", "src.config", "src.core", "src.ui", "src.test"]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.setuptools.package-data]
-src = ["*.txt", "*.md"]
+privision = ["*.txt", "*.md"]

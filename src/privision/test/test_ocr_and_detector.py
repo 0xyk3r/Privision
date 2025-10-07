@@ -4,8 +4,8 @@
 """
 import cv2
 import numpy as np
-from src.core.ocr_detector import OCRDetector
-from src.core.detectors.phone_detector import PhoneDetector
+from privision.core.ocr_detector import OCRDetector
+from privision.core.detectors.phone_detector import PhoneDetector
 
 print("=" * 80)
 print("快速测试 - OCR 和手机号检测")

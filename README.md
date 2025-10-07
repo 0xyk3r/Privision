@@ -120,7 +120,7 @@ cd Privision
 pip install -r requirements.txt
 ```
 
-> With this method, run the program using `python -m src.main`
+> With this method, run the program using `python -m privision.main`
 
 ### GPU Acceleration Installation
 
@@ -480,7 +480,7 @@ The project uses factory pattern design for easy extension of new detectors:
 2. Implement required abstract methods
 3. Register in `DetectorFactory`
 
-See `src/core/detector_base.py` and `src/core/detector_factory.py` for details
+See `src/privision/core/detector_base.py` and `src/privision/core/detector_factory.py` for details
 
 ## 🏗 Project Architecture
 
@@ -489,35 +489,36 @@ See `src/core/detector_base.py` and `src/core/detector_factory.py` for details
 ```
 Privision/
 ├── src/                          # Source code
-│   ├── main.py                   # CLI entry point
-│   ├── batch.py                  # Batch processing entry
-│   ├── server.py                 # API server entry
-│   │
-│   ├── core/                     # Core functionality
-│   │   ├── video_processor.py   # Video processor (frame-by-frame/smart)
-│   │   ├── ocr_detector.py      # OCR detection
-│   │   ├── detector_base.py     # Detector base class
-│   │   ├── detector_factory.py  # Detector factory
-│   │   ├── detectors/           # Detector implementations
-│   │   │   ├── phone_detector.py
-│   │   │   ├── idcard_detector.py
-│   │   │   └── keyword_detector.py
-│   │   ├── precise_locator.py   # Precise location
-│   │   ├── blur.py              # Masking effects
-│   │   └── bbox_calculator.py   # Bounding box calculation
-│   │
-│   ├── api/                      # API service
-│   │   └── task_queue.py        # Task queue management
-│   │
-│   ├── ui/                       # User interface
-│   │   ├── rich_ui.py           # Rich terminal UI
-│   │   ├── progress.py          # Progress callback interface
-│   │   └── visualizer.py        # Visualization window
-│   │
-│   ├── config/                   # Configuration management
-│   │   └── args.py              # Argument parsing
-│   │
-│   └── test/                     # Test modules
+├── ├── privision/                # Main package
+│   │  ├── main.py                   # CLI entry point
+│   │  ├── batch.py                  # Batch processing entry
+│   │  ├── server.py                 # API server entry
+│   │  │
+│   │  ├── core/                     # Core functionality
+│   │  │   ├── video_processor.py   # Video processor (frame-by-frame/smart)
+│   │  │   ├── ocr_detector.py      # OCR detection
+│   │  │   ├── detector_base.py     # Detector base class
+│   │  │   ├── detector_factory.py  # Detector factory
+│   │  │   ├── detectors/           # Detector implementations
+│   │  │   │   ├── phone_detector.py
+│   │  │   │   ├── idcard_detector.py
+│   │  │   │   └── keyword_detector.py
+│   │  │   ├── precise_locator.py   # Precise location
+│   │  │   ├── blur.py              # Masking effects
+│   │  │   └── bbox_calculator.py   # Bounding box calculation
+│   │  │
+│   │  ├── api/                      # API service
+│   │  │   └── task_queue.py        # Task queue management
+│   │  │
+│   │  ├── ui/                       # User interface
+│   │  │   ├── rich_ui.py           # Rich terminal UI
+│   │  │   ├── progress.py          # Progress callback interface
+│   │  │   └── visualizer.py        # Visualization window
+│   │  │
+│   │  ├── config/                   # Configuration management
+│   │  │   └── args.py              # Argument parsing
+│   │  │
+│   │  └── test/                     # Test modules
 │
 ├── pyproject.toml                # Project configuration
 ├── requirements.txt              # Dependency list
@@ -589,7 +590,7 @@ privision input.mp4 output.mp4 --mode smart --sample-interval 0.5
 
 **5. API Concurrent Processing**
 
-Modify the `max_workers` parameter in `src/api/task_queue.py`:
+Modify the `max_workers` parameter in `src/privision/api/task_queue.py`:
 ```python
 get_task_queue(storage_dir=TASKS_DIR, max_workers=2)  # Increase concurrency
 ```
@@ -606,12 +607,12 @@ nvidia-smi
 python -c "import paddle; print('GPU available:', paddle.device.is_compiled_with_cuda())"
 ```
 
-### Q2: Why can't I directly run `python src/main.py`?
+### Q2: Why can't I directly run `python privision/main.py`?
 
-Because import statements use the `src.xxx` format, Python needs to import `src` as a package.
+Because import statements use the `privision.xxx` format, Python needs to import `privision` as a package.
 
 **Solutions**:
-- Run using `python -m src.main`
+- Run using `python -m privision.main`
 - Or install using `pip install -e .` and directly use the `privision` command
 
 ### Q3: Why is the first run slow?
@@ -627,7 +628,7 @@ The first run automatically downloads PaddleOCR model files (about 100-200 MB), 
 
 ### Q5: How to add new detectors?
 
-1. Create a new detector class in `src/core/detectors/`
+1. Create a new detector class in `src/privision/core/detectors/`
 2. Inherit from `BaseDetector` and implement required methods
 3. Register in `DetectorFactory._detectors`
 4. Update command-line arguments and documentation
@@ -642,7 +643,7 @@ Output format currently only supports MP4.
 
 1. Use reverse proxy (such as Nginx)
 2. Configure HTTPS
-3. Modify CORS settings (in `src/server.py`)
+3. Modify CORS settings (in `src/privision/server.py`)
 4. Use process management tools (such as systemd, supervisor)
 5. Configure logging and monitoring
 
@@ -663,11 +664,11 @@ pip install -e ".[dev]"
 
 ```bash
 # Run all tests
-pytest src/test/
+pytest src/privision/test/
 
 # Run specific tests
-python -m src.test.test_phone_filter
-python -m src.test.test_ocr_and_detector
+python -m privision.test.test_phone_filter
+python -m privision.test.test_ocr_and_detector
 ```
 
 ### Code Structure Design

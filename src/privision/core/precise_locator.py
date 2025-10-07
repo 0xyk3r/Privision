@@ -4,10 +4,8 @@
 """
 import numpy as np
 from typing import Tuple, Optional, Callable
-import sys
-from pathlib import Path
-from src.core.bbox_calculator import BboxCalculator
-from src.core.detector_base import BaseDetector
+from privision.core.bbox_calculator import BboxCalculator
+from privision.core.detector_base import BaseDetector
 
 class PreciseLocator:
     """精确定位器 - 通过迭代验证精确定位目标模式"""
@@ -264,7 +262,7 @@ class PreciseLocator:
 
 
 if __name__ == '__main__':
-    from src.core.detectors import PhoneDetector
+    from privision.core.detectors import PhoneDetector
 
     print("=== PreciseLocator 测试 ===\n")
 

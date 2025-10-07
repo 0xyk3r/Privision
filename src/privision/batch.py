@@ -9,8 +9,8 @@ from typing import Literal, Optional, List, Dict, Any
 import argparse
 from datetime import datetime
 
-from src.config.args import ProcessConfig
-from src.core.video_processor import VideoProcessor
+from privision.config.args import ProcessConfig
+from privision.core.video_processor import VideoProcessor
 
 
 class BatchVideoProcessor:
@@ -221,10 +221,10 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
-  python -m src.batch input_videos/ output_videos/
-  python -m src.batch input_videos/ output_videos/ --device gpu:0
-  python -m src.batch input_videos/ output_videos/ --mode smart
-  python -m src.batch input_videos/ output_videos/ --blur-method pixelate --recursive
+  python -m privision.batch input_videos/ output_videos/
+  python -m privision.batch input_videos/ output_videos/ --device gpu:0
+  python -m privision.batch input_videos/ output_videos/ --mode smart
+  python -m privision.batch input_videos/ output_videos/ --blur-method pixelate --recursive
         """
     )
 

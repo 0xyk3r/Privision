@@ -237,9 +237,9 @@ class TaskQueue:
             self._save_tasks()
 
             # 导入处理器和配置
-            from src.config.args import ProcessConfig
-            from src.core.video_processor import VideoProcessor
-            from src.ui.progress import ProgressCallback
+            from privision.config.args import ProcessConfig
+            from privision.core.video_processor import VideoProcessor
+            from privision.ui.progress import ProgressCallback
 
             # 创建进度回调类
             class APIProgressCallback(ProgressCallback):

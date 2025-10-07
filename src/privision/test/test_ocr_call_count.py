@@ -3,9 +3,8 @@
 验证当文本只包含目标内容时，不会产生额外的OCR调用
 """
 import numpy as np
-from src.core.ocr_detector import OCRDetector
-from src.core.detectors.phone_detector import PhoneDetector
-from src.core.precise_locator import PreciseLocator
+from privision.core.detectors.phone_detector import PhoneDetector
+from privision.core.precise_locator import PreciseLocator
 
 
 class MockProgressCallback:

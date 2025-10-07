@@ -120,7 +120,7 @@ cd Privision
 pip install -r requirements.txt
 ```
 
-> 使用此方式需通过 `python -m src.main` 运行程序
+> 使用此方式需通过 `python -m privision.main` 运行程序
 
 ### GPU 加速安装
 
@@ -480,7 +480,7 @@ privision input.mp4 output.mp4 --detector keyword --keywords Password --case-sen
 2. 实现必需的抽象方法
 3. 在 `DetectorFactory` 中注册
 
-详见 `src/core/detector_base.py` 和 `src/core/detector_factory.py`
+详见 `src/privision/core/detector_base.py` 和 `src/privision/core/detector_factory.py`
 
 ## 🏗 项目架构
 
@@ -489,35 +489,36 @@ privision input.mp4 output.mp4 --detector keyword --keywords Password --case-sen
 ```
 Privision/
 ├── src/                          # 源代码
-│   ├── main.py                   # CLI 入口
-│   ├── batch.py                  # 批量处理入口
-│   ├── server.py                 # API 服务器入口
-│   │
-│   ├── core/                     # 核心功能
-│   │   ├── video_processor.py   # 视频处理器（逐帧/智能）
-│   │   ├── ocr_detector.py      # OCR 检测
-│   │   ├── detector_base.py     # 检测器基类
-│   │   ├── detector_factory.py  # 检测器工厂
-│   │   ├── detectors/           # 检测器实现
-│   │   │   ├── phone_detector.py
-│   │   │   ├── idcard_detector.py
-│   │   │   └── keyword_detector.py
-│   │   ├── precise_locator.py   # 精确定位
-│   │   ├── blur.py              # 打码效果
-│   │   └── bbox_calculator.py   # 边界框计算
-│   │
-│   ├── api/                      # API 服务
-│   │   └── task_queue.py        # 任务队列管理
-│   │
-│   ├── ui/                       # 用户界面
-│   │   ├── rich_ui.py           # Rich 终端 UI
-│   │   ├── progress.py          # 进度回调接口
-│   │   └── visualizer.py        # 可视化窗口
-│   │
-│   ├── config/                   # 配置管理
-│   │   └── args.py              # 参数解析
-│   │
-│   └── test/                     # 测试模块
+│   ├── privision/                # 主包
+│   │  ├── main.py                   # CLI 入口
+│   │  ├── batch.py                  # 批量处理入口
+│   │  ├── server.py                 # API 服务器入口
+│   │  │
+│   │  ├── core/                     # 核心功能
+│   │  │   ├── video_processor.py   # 视频处理器（逐帧/智能）
+│   │  │   ├── ocr_detector.py      # OCR 检测
+│   │  │   ├── detector_base.py     # 检测器基类
+│   │  │   ├── detector_factory.py  # 检测器工厂
+│   │  │   ├── detectors/           # 检测器实现
+│   │  │   │   ├── phone_detector.py
+│   │  │   │   ├── idcard_detector.py
+│   │  │   │   └── keyword_detector.py
+│   │  │   ├── precise_locator.py   # 精确定位
+│   │  │   ├── blur.py              # 打码效果
+│   │  │   └── bbox_calculator.py   # 边界框计算
+│   │  │
+│   │  ├── api/                      # API 服务
+│   │  │   └── task_queue.py        # 任务队列管理
+│   │  │
+│   │  ├── ui/                       # 用户界面
+│   │  │   ├── rich_ui.py           # Rich 终端 UI
+│   │  │   ├── progress.py          # 进度回调接口
+│   │  │   └── visualizer.py        # 可视化窗口
+│   │  │
+│   │  ├── config/                   # 配置管理
+│   │  │   └── args.py              # 参数解析
+│   │  │
+│   │  └── test/                     # 测试模块
 │
 ├── pyproject.toml                # 项目配置
 ├── requirements.txt              # 依赖列表
@@ -589,7 +590,7 @@ privision input.mp4 output.mp4 --mode smart --sample-interval 0.5
 
 **5. API 并发处理**
 
-修改 `src/api/task_queue.py` 中的 `max_workers` 参数：
+修改 `src/privision/api/task_queue.py` 中的 `max_workers` 参数：
 ```python
 get_task_queue(storage_dir=TASKS_DIR, max_workers=2)  # 增加并发数
 ```
@@ -606,12 +607,12 @@ nvidia-smi
 python -c "import paddle; print('GPU available:', paddle.device.is_compiled_with_cuda())"
 ```
 
-### Q2: 为什么不能直接运行 `python src/main.py`？
+### Q2: 为什么不能直接运行 `python privision/main.py`？
 
-由于导入语句使用了 `src.xxx` 格式，Python 需要将 `src` 作为包导入。
+由于导入语句使用了 `privision.xxx` 格式，Python 需要将 `privision` 作为包导入。
 
 **解决方案**:
-- 使用 `python -m src.main` 运行
+- 使用 `python -m privision.main` 运行
 - 或使用 `pip install -e .` 安装后直接使用 `privision` 命令
 
 ### Q3: 首次运行很慢？
@@ -627,7 +628,7 @@ python -c "import paddle; print('GPU available:', paddle.device.is_compiled_with
 
 ### Q5: 如何添加新的检测器？
 
-1. 在 `src/core/detectors/` 创建新的检测器类
+1. 在 `src/privision/core/detectors/` 创建新的检测器类
 2. 继承 `BaseDetector` 并实现必需方法
 3. 在 `DetectorFactory._detectors` 中注册
 4. 更新命令行参数和文档
@@ -642,7 +643,7 @@ python -c "import paddle; print('GPU available:', paddle.device.is_compiled_with
 
 1. 使用反向代理（如 Nginx）
 2. 配置 HTTPS
-3. 修改 CORS 设置（在 `src/server.py` 中）
+3. 修改 CORS 设置（在 `src/privision/server.py` 中）
 4. 使用进程管理工具（如 systemd、supervisor）
 5. 配置日志和监控
 
@@ -663,11 +664,11 @@ pip install -e ".[dev]"
 
 ```bash
 # 运行所有测试
-pytest src/test/
+pytest src/privision/test/
 
 # 运行特定测试
-python -m src.test.test_phone_filter
-python -m src.test.test_ocr_and_detector
+python -m privision.test.test_phone_filter
+python -m privision.test.test_ocr_and_detector
 ```
 
 ### 代码结构设计

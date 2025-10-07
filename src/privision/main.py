@@ -5,9 +5,9 @@
 """
 import sys
 
-from src.config import parse_args
-from src.core import VideoProcessor
-from src.ui import RichUI, ConsoleProgress, Visualizer
+from privision.config import parse_args
+from privision.core import VideoProcessor
+from privision.ui import RichUI, ConsoleProgress
 
 
 def main():
